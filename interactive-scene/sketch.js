@@ -8,8 +8,8 @@
 
 //Constants
 let gravitationalForce = 0.3;
-let canvasX = 1000;
-let canvasY = 500;
+let canvasX = 1000
+let canvasY = 1000
 let frictionalForce = 0.5;
 let footOffset = 2;
 let cameraX = 0;
@@ -127,16 +127,16 @@ class Humanoid {
       return;
     }
     
-    console.log(this.moveDir, this.actionState, this.xVel, this.directionFacing)
+    console.log(this.moveDir, this.actionState, this.xVel, this.directionFacing);
     //Movement
     
     
     if (
-      this.actionState != "rolling" &&
+      this.actionState !== "rolling" &&
       !this.actionState.startsWith("punch") &&
       abs(this.xVel) <= 6
     ) {
-      if (this.moveDir != 0) {
+      if (this.moveDir !== 0) {
         //Let accell be walkspeed or half as much as walk speed in air
         this.speed = this.actionState === "sprinting" ? 5 : 3;
         let accel = this.speed;
@@ -154,20 +154,23 @@ class Humanoid {
           Math.sign(this.xVel) !== this.moveDir &&
           this.actionState === "sprinting"
         ) {
-          let turnPower = 0.4
+          let turnPower = 0.4;
           this.xVel += this.moveDir * turnPower;
           this.lastActionState = this.actionState;
-          if (abs(this.xVel) > 3) this.actionState = "sprinting";
+          if (abs(this.xVel) > 3) {
+            this.actionState = "sprinting";
+          }
 
           //Otherwise treat speed as normal
-        } else {
+        }
+        else {
           this.xVel = this.moveDir * accel;
         }
       }
     }
 
     //Apply gravity
-    if (!this.grounded && this.actionState != "rolling") {
+    if (!this.grounded && this.actionState !== "rolling") {
       this.yVel += gravitationalForce;
     }
 
@@ -181,14 +184,15 @@ class Humanoid {
     }
 
     //Apply friction if not rolling, 1/4 in air
-    if (this.moveDir === 0 && this.actionState != "rolling") {
+    if (this.moveDir === 0 && this.actionState !== "rolling") {
       let currentFriction = this.grounded
         ? frictionalForce
         : frictionalForce / 4;
 
       if (abs(this.xVel) <= currentFriction) {
         this.xVel = 0;
-      } else {
+      }
+      else {
         this.xVel -= (this.xVel > 0 ? 1 : -1) * currentFriction;
       }
     }
@@ -215,7 +219,8 @@ class Humanoid {
       //Elongate player depending on velocity for speed effect
       this.yScale = Math.min(1.2, 1 + this.yVel * 0.005);
       this.xScale = Math.max(0.8, 1 - this.yVel * 0.005);
-    } else if (this.grounded && this.actionState === "landing") {
+    }
+    else if (this.grounded && this.actionState === "landing") {
       //Return player to normal scale
       this.yScale = 1;
       this.xScale = 1;
@@ -225,14 +230,17 @@ class Humanoid {
         this.lastActionState = this.actionState;
         this.actionState = "idle";
       }
-    } else if (this.grounded && this.xVel === 0) {
+    }
+    else if (this.grounded && this.xVel === 0) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
-    } else if (this.grounded && abs(this.xVel) > 1) {
+    }
+    else if (this.grounded && abs(this.xVel) > 1) {
       if (keyIsDown(SHIFT) && this.actionState !== "rolling") {
         this.lastActionState = this.actionState;
         this.actionState = "sprinting";
-      } else {
+      }
+      else {
         this.lastActionState = this.actionState;
         this.actionState = "running";
       }
@@ -270,7 +278,8 @@ class Humanoid {
 
     if (this.directionFacing === "right") {
       this.xVel = Math.min(this.xVel + this.rollStrength, 6);
-    } else if (this.directionFacing === "left") {
+    }
+    else if (this.directionFacing === "left") {
       this.xVel = Math.max(this.xVel - this.rollStrength, -6);
     }
   }
@@ -482,7 +491,10 @@ class Player extends Humanoid {
     //Check for movement inputs
     if (keyIsDown(65) && !keyIsDown(68)) {
       this.moveDir = -1;
-    } else if (keyIsDown(68) && !keyIsDown(65)) this.moveDir = 1;
+    }
+    else if (keyIsDown(68) && !keyIsDown(65)) {
+      this.moveDir = 1;
+    }
     else {
       this.moveDir = 0;
     }
@@ -563,7 +575,7 @@ class Player extends Humanoid {
       }
     }
 
-    let verticalOffset = (anim.charHeight * this.imageScale * this.yScale) / 2;
+    let verticalOffset = anim.charHeight * this.imageScale * this.yScale / 2;
 
     image(
       this.currentSheet,
@@ -606,7 +618,8 @@ class Player extends Humanoid {
       this.actionState = this.currentWeapon + "Up";
       this.currentHit = 1;
       return;
-    } else {
+    }
+    else {
       this.actionState = this.currentWeapon + str(this.currentHit);
       this.currentHit += 1;
     }
@@ -787,6 +800,9 @@ function setup() {
   rectMode(CENTER);
   imageMode(CENTER);
   noSmooth();
+
+  canvasX = 1000;
+  canvasY = 1000;
 
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
