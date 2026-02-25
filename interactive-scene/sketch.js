@@ -8,14 +8,12 @@
 
 //Constants
 let gravitationalForce = 0.3;
-let canvasX = 1000
-let canvasY = 1000
 let frictionalForce = 0.5;
 let footOffset = 2;
 let cameraX = 0;
 let cameraY = 0;
 let floorHeight = 250;
-let groundLevel = canvasY - floorHeight;
+let groundLevel = height - floorHeight;
 
 //Globals
 let player;
@@ -62,8 +60,8 @@ class Humanoid {
     givenScale
   ) {
     this.imageScale = givenScale || 2;
-    this.X = x || canvasX / 2;
-    this.Y = y || canvasY / 2;
+    this.X = x || width / 2;
+    this.Y = y || height / 2;
     this.xVel = 0;
     this.yVel = 0;
     this.sizeY = sizeOfY * this.imageScale || 35 * this.imageScale;
@@ -149,7 +147,7 @@ class Humanoid {
           this.xVel = resultSpeed * Math.sign(this.xVel);
         }
       
-        //Slowly change direction if moveDir & xVel direction != match
+        //Slowly change direction if moveDir & xVel direction !== match
         if (
           Math.sign(this.xVel) !== this.moveDir &&
           this.actionState === "sprinting"
@@ -179,7 +177,7 @@ class Humanoid {
     //Apply bounds
     let nextX = this.X + this.xVel;
 
-    if (nextX >= this.sizeX / 2 && nextX <= canvasX - this.sizeX / 2) {
+    if (nextX >= this.sizeX / 2 && nextX <= width - this.sizeX / 2) {
       this.X = nextX;
     }
 
@@ -206,7 +204,7 @@ class Humanoid {
     if (
       this.actionState === "rolling" ||
       this.actionState.startsWith("punch") ||
-      this.actionState == "ledgeClimb"
+      this.actionState === "ledgeClimb"
     ) {
       return;
     }
@@ -553,12 +551,12 @@ class Player extends Humanoid {
       this.currentFrame = (this.currentFrame + 1) % anim.totalFrames;
 
       //If animation shouldn't loop, and isn't one time, hold last frame
-      if (this.currentFrame == 0 && !anim.shouldLoop && !anim.oneTime) {
+      if (this.currentFrame === 0 && !anim.shouldLoop && !anim.oneTime) {
         this.currentFrame = lastFrame;
       }
 
       //If animation is onetime, return to idle after finished
-      else if (this.currentFrame == 0 && !anim.shouldLoop && anim.oneTime) {
+      else if (this.currentFrame === 0 && !anim.shouldLoop && anim.oneTime) {
         if (this.actionState === "ledgeClimb") {
           this.Y -= this.sizeY * 0.7;
 
@@ -599,7 +597,7 @@ class Player extends Humanoid {
   hit() {
     if (
       millis() - this.lastHit < this.hitCD ||
-      this.actionState == "rolling" ||
+      this.actionState === "rolling" ||
       this.actionState === "ledgeClimb"
     ) {
       return;
@@ -675,7 +673,7 @@ class Platform {
       abs(itemLeft - this.right) < 10 &&
       abs(handY - this.top) < 15 &&
       item.directionFacing === "left" &&
-      item.actionState != "rolling" &&
+      item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 1000
     ) {
@@ -796,22 +794,22 @@ function applyAllPhysics() {
 }
 
 function setup() {
-  createCanvas(canvasX, canvasY);
+  createCanvas(windowWidth, windowHeight);
   rectMode(CENTER);
   imageMode(CENTER);
   noSmooth();
 
-  canvasX = 1000;
-  canvasY = 1000;
+  width = 1000;
+  height = 1000;
 
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
 
   platforms.push(
     new Platform(
-      canvasX / 2,
-      canvasY - floorHeight / 2,
-      canvasX * 2,
+      width / 2,
+      height - floorHeight / 2,
+      width * 2,
       floorHeight
     )
   );
@@ -822,7 +820,7 @@ function setup() {
 
   platforms.push(new Platform(400, groundLevel - 80, 100, 10));
 
-  player = new Player(canvasX / 2, groundLevel - 100);
+  player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
 
   console.log(platforms);
@@ -837,8 +835,8 @@ function draw() {
   checkAllcollisions();
 
   //Follow player with camera
-  let targetX = canvasX / 2 - player.X * 1.25;
-  let targetY = canvasY / 2 - player.Y;
+  let targetX = width / 2 - player.X * 1.25;
+  let targetY = height / 2 - player.Y;
 
   cameraX = lerp(cameraX, targetX, 0.4);
   cameraY = lerp(cameraY, targetY, 0.4);
