@@ -13,7 +13,7 @@ let footOffset = 2;
 let cameraX = 0;
 let cameraY = 0;
 let floorHeight = 250;
-let groundLevel = height - floorHeight;
+let groundLevel
 
 //Globals
 let player;
@@ -72,6 +72,7 @@ class Humanoid {
     this.lastActionState = "idle";
     this.xScale = 1;
     this.yScale = 1;
+    this.currentPlatform;
 
     //roll
     this.rollCooldown = rollCD || 1000;
@@ -124,11 +125,8 @@ class Humanoid {
       this.xVel = 0;
       return;
     }
-    
-    console.log(this.moveDir, this.actionState, this.xVel, this.directionFacing);
+
     //Movement
-    
-    
     if (
       this.actionState !== "rolling" &&
       !this.actionState.startsWith("punch") &&
@@ -168,7 +166,7 @@ class Humanoid {
     }
 
     //Apply gravity
-    if (!this.grounded && this.actionState !== "rolling") {
+    if (!this.grounded && this.actionState) {
       this.yVel += gravitationalForce;
     }
 
@@ -272,7 +270,9 @@ class Humanoid {
     this.actionState = "rolling";
     this.lastroll = millis();
 
-    this.yVel = 0;
+    if (!this.grounded) {
+      this.yVel -= 0.5;
+    }
 
     if (this.directionFacing === "right") {
       this.xVel = Math.min(this.xVel + this.rollStrength, 6);
@@ -500,7 +500,7 @@ class Player extends Humanoid {
     //reset roll state after lengthOfroll amount of time
     if (
       this.actionState === "rolling" &&
-      millis() - this.lastroll > this.lengthOfroll //|| (this.moveDir !== Math.sign(this.xVel))
+      millis() - this.lastroll > this.lengthOfroll
     ) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
@@ -626,12 +626,13 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay) {
+  constructor(xPos, yPos, xSize, ySize, oneWay, name) {
     this.X = xPos;
     this.Y = yPos;
     this.sizeX = xSize;
     this.sizeY = ySize;
     this.oneWay = oneWay;
+    this.name = name 
   }
 
   //Display platform with texture or fallback as rectangle
@@ -694,6 +695,8 @@ class Platform {
       this.snapToLedge(item, "left");
       console.log("Grabbed ledge");
     }
+
+    //Floor check
     if (
       itemRight > this.left &&
       itemLeft < this.right &&
@@ -711,6 +714,7 @@ class Platform {
       //Only set yVel to 0 if we're not going up
       if (item.yVel > 0) {
         item.yVel = 0;
+        item.currentPlatform = this.name;
       }
 
       item.grounded = true;
@@ -795,12 +799,13 @@ function applyAllPhysics() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
+  groundLevel = height - floorHeight;
+
+
   rectMode(CENTER);
   imageMode(CENTER);
   noSmooth();
-
-  width = 1000;
-  height = 1000;
 
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
@@ -810,15 +815,16 @@ function setup() {
       width / 2,
       height - floorHeight / 2,
       width * 2,
-      floorHeight
+      floorHeight,
+      "floor"
     )
   );
 
   makeTower();
 
-  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false));
+  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "Plat1"));
 
-  platforms.push(new Platform(400, groundLevel - 80, 100, 10));
+  platforms.push(new Platform(400, groundLevel - 80, 100, 10, "Plat2"));
 
   player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
@@ -867,4 +873,10 @@ function keyPressed() {
 function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  
 }
