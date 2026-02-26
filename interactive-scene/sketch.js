@@ -59,6 +59,7 @@ class Humanoid {
     moveSpeed,
     givenScale
   ) {
+    //States and stats
     this.imageScale = givenScale || 2;
     this.X = x || width / 2;
     this.Y = y || height / 2;
@@ -73,6 +74,7 @@ class Humanoid {
     this.xScale = 1;
     this.yScale = 1;
     this.currentPlatform;
+    this.phasingBottom = false;
 
     //roll
     this.rollCooldown = rollCD || 1000;
@@ -280,6 +282,10 @@ class Humanoid {
     else if (this.directionFacing === "left") {
       this.xVel = Math.max(this.xVel - this.rollStrength, -6);
     }
+  }
+
+  phaseCurrentPlatform() {
+    this.phasingBottom = true;
   }
 }
 
@@ -703,6 +709,10 @@ class Platform {
       itemBottom >= this.top &&
       itemBottom <= this.bottom + item.yVel
     ) {
+      if (item.phasingBottom === true && item.currentPlatform === this && this.oneWay) {
+        return ;
+      }
+
       if (item.yVel > 0.2) {
         this.lastActionState = this.actionState;
         item.actionState = "landing";
@@ -714,7 +724,8 @@ class Platform {
       //Only set yVel to 0 if we're not going up
       if (item.yVel > 0) {
         item.yVel = 0;
-        item.currentPlatform = this.name;
+        item.currentPlatform = this;
+        item.phasingBottom = false;
       }
 
       item.grounded = true;
@@ -867,6 +878,10 @@ function keyPressed() {
   if (keyCode === SHIFT) {
     player.roll();
     player.inputBuffers.roll = millis();
+  }
+
+  if (key === 's') {
+    player.phaseCurrentPlatform();
   }
 }
 
