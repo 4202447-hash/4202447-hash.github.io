@@ -638,7 +638,7 @@ class Platform {
     this.sizeX = xSize;
     this.sizeY = ySize;
     this.oneWay = oneWay;
-    this.name = name 
+    this.name = name;
   }
 
   //Display platform with texture or fallback as rectangle
@@ -833,9 +833,9 @@ function setup() {
 
   makeTower();
 
-  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "Plat1"));
+  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, false));
 
-  platforms.push(new Platform(400, groundLevel - 80, 100, 10, "Plat2"));
+  platforms.push(new Platform(400, groundLevel - 80, 100, 10, false));
 
   player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
