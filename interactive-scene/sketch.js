@@ -13,7 +13,7 @@ let footOffset = 2;
 let cameraX = 0;
 let cameraY = 0;
 let floorHeight = 250;
-let groundLevel
+let groundLevel;
 
 //Globals
 let player;
@@ -45,6 +45,7 @@ function preload() {
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
 }
 
+
 //Humanoid class which includes anything all player/playerlike entities
 class Humanoid {
   constructor(
@@ -75,6 +76,7 @@ class Humanoid {
     this.yScale = 1;
     this.currentPlatform;
     this.phasingBottom = false;
+    this.lastHitTaken = 0;
 
     //roll
     this.rollCooldown = rollCD || 1000;
@@ -273,7 +275,7 @@ class Humanoid {
     this.lastroll = millis();
 
     if (!this.grounded) {
-      this.yVel -= 0.5;
+      this.yVel -= 1;
     }
 
     if (this.directionFacing === "right") {
@@ -282,6 +284,14 @@ class Humanoid {
     else if (this.directionFacing === "left") {
       this.xVel = Math.max(this.xVel - this.rollStrength, -6);
     }
+  }
+
+  gotHit() {
+    if (millis() - this.lastHitTaken < 150) {
+      return;
+    }
+
+    this.lastHitTaken = millis();
   }
 
   phaseCurrentPlatform() {
@@ -297,6 +307,8 @@ class Player extends Humanoid {
     //Player specific variables
     this.playerControlled = true;
     this.lastHit = 0;
+    this.lastSolidGroundX;
+    this.lastSolidGroundY;
 
     //Animations
     this.frameWidth = 0;
@@ -580,6 +592,11 @@ class Player extends Humanoid {
     }
 
     let verticalOffset = anim.charHeight * this.imageScale * this.yScale / 2;
+    let aNew = this.currentSheet;
+
+    if (millis() - this.lastHitTaken < 150) {
+      blendMode(ADD);
+    }
 
     image(
       this.currentSheet,
@@ -598,7 +615,7 @@ class Player extends Humanoid {
     //Reset
     pop();
   }
-
+  
   //Function to hit, used for any M1 attack
   hit() {
     if (
@@ -632,17 +649,18 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay, name) {
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor) {
     this.X = xPos;
     this.Y = yPos;
     this.sizeX = xSize;
     this.sizeY = ySize;
     this.oneWay = oneWay;
-    this.name = name;
+    this.color = theColor ? theColor: "white";
   }
 
   //Display platform with texture or fallback as rectangle
   display() {
+    fill(this.color) ;
     rect(this.X, this.Y, this.sizeX, this.sizeY);
   }
 
@@ -666,6 +684,7 @@ class Platform {
     let itemRight = item.X + item.sizeX / 2;
     let itemTop = item.Y - item.sizeY / 2;
     let handY = item.Y - item.sizeY / 4;
+    let itemHit = false;
 
     this.top = this.Y - this.sizeY / 2;
     this.bottom = this.Y + this.sizeY / 2;
@@ -717,6 +736,9 @@ class Platform {
         this.lastActionState = this.actionState;
         item.actionState = "landing";
         item.timeSinceLand = millis();
+        itemHit = true;
+        item.lastSolidGroundX = item.xPos;
+        item.lastSolidGroundY = item.yPos;
       }
 
       item.Y = this.top - item.sizeY / 2;
@@ -744,6 +766,7 @@ class Platform {
       ) {
         item.X = this.left - item.sizeX / 2;
         item.xVel = 0;
+        itemHit = true;
         return;
       }
 
@@ -756,6 +779,7 @@ class Platform {
       ) {
         item.X = this.right + item.sizeX / 2;
         item.xVel = 0;
+        itemHit = true;
         return;
       }
 
@@ -771,13 +795,31 @@ class Platform {
         item.yVel = 0;
       }
     }
+    return itemHit;
   }
+}
+
+class HurtBlock extends Platform{
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor) {
+    super(xPos, yPos, xSize, ySize, oneWay, theColor);
+  }
+
+  checkcollision(item) {
+    if (super.checkcollision(item)){
+      item.gotHit();
+
+      if (item instanceof Player) {
+        item.respawn();
+      }
+    }
+  }
+
 }
 
 //Helper function to draw small tower of oneway collision platforms
 function makeTower() {
   for (let i = groundLevel - 80; i > 0; i -= 80) {
-    platforms.push(new Platform(20, i, 100, 10, true));
+    platforms.push(new Platform(20, i, 100, 10, true, "blue"));
   }
 }
 
@@ -827,16 +869,17 @@ function setup() {
       height - floorHeight / 2,
       width * 2,
       floorHeight,
-      "floor"
+      false,
+      "white"
     )
   );
 
   makeTower();
 
-  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, false));
+  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "white"));
 
-  platforms.push(new Platform(400, groundLevel - 80, 100, 10, false));
-
+  platforms.push(new Platform(400, groundLevel - 80, 100, 10, false, "white"));
+  platforms.push(new HurtBlock(600, groundLevel - 120, 100, 10, false, "red"));
   player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
 
