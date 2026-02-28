@@ -32,7 +32,12 @@ let playerSprintSheet;
 let playerUpwardPunch;
 let playerLedgeSheet;
 
+//Props and textures
+let grassTexture;
+let stoneBrickTexture;
+
 function preload() {
+  //Animations
   playerIdleSheet = loadImage("Character/idle.png");
   playerrollingSheet = loadImage("Character/rolling.png");
   playerJumpSheet = loadImage("Character/jump.png");
@@ -43,6 +48,10 @@ function preload() {
   playerSprintSheet = loadImage("Character/sprint.png");
   playerUpwardPunch = loadImage("Character/upPunch.png");
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
+
+  //Props and textures
+  grassTexture = loadImage("/PropsTextures/grassTile.png")
+  stoneBrickTexture = loadImage("/PropsTextures/stonebrick.png")
 }
 
 
@@ -176,12 +185,15 @@ class Humanoid {
 
     this.Y += this.yVel;
 
-    //Apply bounds
-    let nextX = this.X + this.xVel;
+    // Apply bounds
+    // let nextX = this.X + this.xVel;
 
-    if (nextX >= this.sizeX / 2 && nextX <= width - this.sizeX / 2) {
-      this.X = nextX;
-    }
+    // if (nextX >= this.sizeX / 2 && nextX <= width - this.sizeX / 2) {
+    //   this.X = nextX;
+    // }
+
+    let nextX = this.X + this.xVel;
+    this.X = nextX;
 
     //Apply friction if not rolling, 1/4 in air
     if (this.moveDir === 0 && this.actionState !== "rolling") {
@@ -295,7 +307,9 @@ class Humanoid {
   }
 
   phaseCurrentPlatform() {
-    this.phasingBottom = true;
+    if (this.actionState !== "ledgeClimb" && this.grounded) {
+      this.phasingBottom = true;
+    }
   }
 }
 
@@ -307,8 +321,8 @@ class Player extends Humanoid {
     //Player specific variables
     this.playerControlled = true;
     this.lastHit = 0;
-    this.lastSolidGroundX;
-    this.lastSolidGroundY;
+    this.lastCheckpointX = y
+    this.lastCheckpointY = x
 
     //Animations
     this.frameWidth = 0;
@@ -595,7 +609,17 @@ class Player extends Humanoid {
     let aNew = this.currentSheet;
 
     if (millis() - this.lastHitTaken < 150) {
-      blendMode(ADD);
+      drawingContext.filter = 'brightness(10) contrast(2)'; 
+    }
+
+    if (this.actionState === "rolling") {
+      drawingContext.shadowBlur = 15
+      drawingContext.shadowColor = color(0, 0, 255)
+    }
+
+    if (this.actionState.startsWith("punch")) {
+      drawingContext.shadowBlur = 20
+      drawingContext.shadowColor = color(255,0 ,0)
     }
 
     image(
@@ -611,6 +635,7 @@ class Player extends Humanoid {
       this.frameWidth,
       anim.charHeight
     );
+    
 
     //Reset
     pop();
@@ -645,23 +670,63 @@ class Player extends Humanoid {
       this.currentHit += 1;
     }
   }
+
+  respawn() {
+    console.log(this.lastCheckpointX, this.lastCheckpointY)
+    this.X = this.lastCheckpointX
+    this.Y = this.lastCheckpointY - 5
+    this.xVel = 0
+    this.yVel = 0
+  }
 }
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor) {
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage) {
     this.X = xPos;
     this.Y = yPos;
     this.sizeX = xSize;
     this.sizeY = ySize;
     this.oneWay = oneWay;
     this.color = theColor ? theColor: "white";
+    this.img = theImage
   }
 
   //Display platform with texture or fallback as rectangle
   display() {
-    fill(this.color) ;
-    rect(this.X, this.Y, this.sizeX, this.sizeY);
+    if (this.img) {
+      let displaySizeX = 150
+      let displaySizeY = 150
+      
+      push(); //save current settings
+      imageMode(CORNER) //Return to image mode corner because tiling is too hard for me with center
+
+      for (let x = 0; x < this.sizeX; x += displaySizeX) {
+        for (let y = 0; y < this.sizeY; y += displaySizeY){
+          let dW = Math.min(displaySizeX, this.sizeX - x) 
+          let dH = Math.min(displaySizeY, this.sizeY - y)
+          
+          let sourceW = map(dW, 0, displaySizeX, 0, this.img.width)
+          let sourceH = map(dH, 0, displaySizeY, 0, this.img.height)
+
+          image(
+            this.img,
+            (this.X - this.sizeX / 2) + x,  //Since we are on image mode center we need to re,
+            (this.Y - this.sizeY / 2) + y,
+            dW, dH,
+            0, 0,
+            sourceW,
+            sourceH
+          )
+        }
+      }
+      pop(); //Return to old settings
+    }
+    else{
+      fill(this.color) ;
+      rect(this.X, this.Y, this.sizeX, this.sizeY);
+    }
+    
   }
 
   snapToLedge(item, side) {
@@ -669,7 +734,11 @@ class Platform {
     item.actionState = "ledgeClimb";
     item.xVel = 0;
     item.yVel = 0;
-    item.Y = this.top + item.sizeY / 3 - 13;
+    item.currentPlatform = this
+
+
+    item.Y = this.top + (item.sizeY * 0.25) - 4;
+
     item.X =
       side === "left"
         ? this.left - item.sizeX / 2 + 5
@@ -684,6 +753,7 @@ class Platform {
     let itemRight = item.X + item.sizeX / 2;
     let itemTop = item.Y - item.sizeY / 2;
     let handY = item.Y - item.sizeY / 4;
+    let headY = item.Y - item.sizeY / 2
     let itemHit = false;
 
     this.top = this.Y - this.sizeY / 2;
@@ -695,14 +765,20 @@ class Platform {
 
     //Right
     if (
-      item.xVel <= 0 &&
-      abs(itemLeft - this.right) < 10 &&
+      abs(itemLeft - this.right) < 5 &&
       abs(handY - this.top) < 15 &&
       item.directionFacing === "left" &&
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
-      millis() - item.lastLedgeClimb > 1000
+      millis() - item.lastLedgeClimb > 1000 &&
+      !item.grounded
     ) {
+      
+      //Skip ledge climb if this function is being applied to a hurt block
+      if (this instanceof HurtBlock) {
+        return true
+      }
+
       this.snapToLedge(item, "right");
       console.log("Grabbed ledge");
     }
@@ -710,23 +786,31 @@ class Platform {
     //Left
     if (
       item.xVel >= 0 &&
-      abs(itemRight - this.left) < 10 &&
+      abs(itemRight - this.left) < 5 &&
       abs(handY - this.top) < 15 &&
       item.directionFacing === "right" &&
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
-      millis() - item.lastLedgeClimb > 1000
+      millis() - item.lastLedgeClimb > 1000 &&
+      !item.grounded
     ) {
+
+      console.log("Grabbed left")
+
+      if (this instanceof HurtBlock) {
+        return true
+      }
+
       this.snapToLedge(item, "left");
       console.log("Grabbed ledge");
     }
 
     //Floor check
     if (
-      itemRight > this.left &&
+      itemRight > this.left  &&
       itemLeft < this.right &&
       itemBottom >= this.top &&
-      itemBottom <= this.bottom + item.yVel
+      itemBottom <= this.top + max(5, item.yVel + 2)
     ) {
       if (item.phasingBottom === true && item.currentPlatform === this && this.oneWay) {
         return ;
@@ -737,10 +821,17 @@ class Platform {
         item.actionState = "landing";
         item.timeSinceLand = millis();
         itemHit = true;
-        item.lastSolidGroundX = item.xPos;
-        item.lastSolidGroundY = item.yPos;
+        item.phasingBottom = false
       }
 
+      if (!(this instanceof HurtBlock)) {
+        item.lastCheckpointX = item.X;
+        item.lastCheckpointY = item.Y;
+        console.log("SET GROUND")
+      }
+
+      
+      item.currentPlatform = this
       item.Y = this.top - item.sizeY / 2;
 
       //Only set yVel to 0 if we're not going up
@@ -766,8 +857,7 @@ class Platform {
       ) {
         item.X = this.left - item.sizeX / 2;
         item.xVel = 0;
-        itemHit = true;
-        return;
+        return true;
       }
 
       //If item runs into right of object
@@ -779,10 +869,10 @@ class Platform {
       ) {
         item.X = this.right + item.sizeX / 2;
         item.xVel = 0;
-        itemHit = true;
-        return;
+        return true;
       }
 
+      //If item headbumps object
       if (
         !this.oneWay &&
         itemRight > this.left &&
@@ -793,6 +883,7 @@ class Platform {
         item.Y = this.bottom + item.sizeY / 2;
         console.log("hit two way platform");
         item.yVel = 0;
+        itemHit = true
       }
     }
     return itemHit;
@@ -818,7 +909,7 @@ class HurtBlock extends Platform{
 
 //Helper function to draw small tower of oneway collision platforms
 function makeTower() {
-  for (let i = groundLevel - 80; i > 0; i -= 80) {
+  for (let i = groundLevel - 75; i > 0; i -= 80) {
     platforms.push(new Platform(20, i, 100, 10, true, "blue"));
   }
 }
@@ -863,22 +954,35 @@ function setup() {
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
 
+  
   platforms.push(
     new Platform(
-      width / 2,
+      width/2,
       height - floorHeight / 2,
-      width * 2,
+      width * 4,
       floorHeight,
       false,
-      "white"
+      "green",
+      stoneBrickTexture
     )
   );
 
+  platforms.push(new Platform (
+    width/2 + 100,
+    groundLevel - 70,
+    100,
+    140,
+    false,
+    "grey",
+    stoneBrickTexture
+  ))
+
+  //Old demo stage
   makeTower();
 
   platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "white"));
 
-  platforms.push(new Platform(400, groundLevel - 80, 100, 10, false, "white"));
+  platforms.push(new Platform(400, groundLevel - 80, 100, 50, false, "white", stoneBrickTexture));
   platforms.push(new HurtBlock(600, groundLevel - 120, 100, 10, false, "red"));
   player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
@@ -889,7 +993,7 @@ function setup() {
 function draw() {
   scale(1.25);
 
-  background(220);
+  background(27, 34, 56);
   player.update();
   applyAllPhysics();
   checkAllcollisions();
@@ -932,6 +1036,8 @@ function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
 }
+
+
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
