@@ -48,6 +48,7 @@ let dirtStageR;
 let deadGrassStageL;
 let deadGrassStageM;
 let deadGrassStageR;
+let spikeUp;
 
 function preload() {
   //Animations
@@ -77,6 +78,7 @@ function preload() {
   deadGrassStageL = loadImage("/PropsTextures/DGSL.png")
   deadGrassStageM = loadImage("/PropsTextures/DGS.png")
   deadGrassStageR = loadImage("/PropsTextures/DGSR.png")
+  spikeUp = loadImage("/PropsTextures/spikeUp.png")
 
   //Background
   backgroundLayer1 = loadImage("PropsTextures/bgL1.png")
@@ -814,7 +816,7 @@ class Platform {
       item.directionFacing === "left" &&
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
-      millis() - item.lastLedgeClimb > 1000 &&
+      millis() - item.lastLedgeClimb > 500 &&
       !item.grounded && this.canClimb
     ) {
       
@@ -835,7 +837,7 @@ class Platform {
       item.directionFacing === "right" &&
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
-      millis() - item.lastLedgeClimb > 1000 &&
+      millis() - item.lastLedgeClimb > 500 &&
       !item.grounded && this.canClimb
     ) {
 
@@ -934,8 +936,8 @@ class Platform {
 }
 
 class HurtBlock extends Platform{
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor) {
-    super(xPos, yPos, xSize, ySize, oneWay, theColor);
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY) {
+    super(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY);
   }
 
   checkcollision(item) {
@@ -968,48 +970,31 @@ function setup() {
   dirtStage = [dirtStageL, dirtStageM, dirtStageR]
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR]
 
-  platforms.push(
-    new Platform(
-      width/2,
-      height - floorHeight / 2,
-      width * 4,
-      48,
-      false,
-      "green",
-      deadGrassTexture,
-      48, 96, false
-    )
-  );
+  //Stage setups
+  
+  //Left island
+  createStage(width / 2 - 300, groundLevel , 10, 20)
 
-  platforms.push(
-    new Platform(
-      width/2,
-      height + floorHeight * 2,
-      width * 4,
-      floorHeight * 4,
-      false,
-      "green",
-      belowGrass,
-      48, 96, false
-    )
-  )
+  //Way to right cluster
+  makeTower(width / 2 - 25, groundLevel - 330, 4);
 
-  makeTower();
+  //Right cluster
+  createStage(width / 2 + 600, groundLevel, 10, 35)
+  createStage(width / 2 + 355, groundLevel , 14, 50)
+  createStage(width / 2 + 800, groundLevel , 14, 50)
+  createSpikePit(width / 2 + 577, groundLevel - (37 * 12), 7 )
 
-  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "white", false, 0, 0, true));
-
-  platforms.push(new Platform(400, groundLevel - 80, 96, 9, false, "white", deadGrassPlatform, 24, 9, true));
-  platforms.push(new HurtBlock(600, groundLevel - 120, 100, 10, false, "red"));
-  player = new Player(width / 2, groundLevel - 100);
+  //Main floor
+  createStage(width / 2, groundLevel - 50, 24, 4)
+  
+  player = new Player(width / 2, groundLevel - 250);
   entities.push(player);
-
-  createStage(1200, groundLevel - 12 * 4, 26, 5)
 
   console.log(platforms);
 }
 
 function draw() {
-  scale(1.25);
+  scale(1.5);
 
   background(245, 245, 220);
   //drawBackground()
@@ -1020,8 +1005,8 @@ function draw() {
   checkAllcollisions();
 
   //Follow player with camera
-  let targetX = width / 2 - player.X ;
-  let targetY = height / 2 - player.Y + 50;
+  let targetX = width / 2 - player.X - 250 ;
+  let targetY = height / 2 - player.Y;
 
   cameraX = lerp(cameraX, targetX, 0.4);
   cameraY = lerp(cameraY, targetY, 0.4);
@@ -1059,9 +1044,11 @@ function mousePressed() {
 }
 
 //Helper function to draw small tower of oneway collision platforms
-function makeTower() {
-  for (let i = groundLevel - 75; i > 0; i -= 80) {
-    platforms.push(new Platform(20, i, 96, 9, true, "blue", stonePlatform, 24, 9, true));
+function makeTower(x, y, amount) {
+  let spacing = 80; 
+  for (let i = 0; i < amount; i++) {
+    let floorY = y - (i * spacing);
+    platforms.push(new Platform(x, floorY, 96, 9, true, "blue", stonePlatform, 24, 9, true));
   }
 }
 
@@ -1112,3 +1099,6 @@ function createStage(x, y, blocksWide, blocksTall) {
   platforms.push(new Platform(x, y - (dirtH / 2) - (grassH / 2), grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)) 
 }
 
+function createSpikePit(x, y, blocksWide) {
+  platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", spikeUp, 16, 32));
+}
