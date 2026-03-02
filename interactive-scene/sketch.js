@@ -12,7 +12,7 @@ let frictionalForce = 0.5;
 let footOffset = 2;
 let cameraX = 0;
 let cameraY = 0;
-let floorHeight = 250;
+let floorHeight = 48;
 let groundLevel;
 
 //Globals
@@ -33,8 +33,21 @@ let playerUpwardPunch;
 let playerLedgeSheet;
 
 //Props and textures
-let grassTexture;
-let stoneBrickTexture;
+let deadGrassTexture;
+let belowGrass;
+let backgroundLayer1;
+let deadGrassPlatformM;
+let deadGrassPlatformL;
+let deadGrassPlatformR;
+let stonePlatformL;
+let stonePlatformR;
+let stonePlatformM;
+let dirtStageL;
+let dirtStageM;
+let dirtStageR;
+let deadGrassStageL;
+let deadGrassStageM;
+let deadGrassStageR;
 
 function preload() {
   //Animations
@@ -50,10 +63,30 @@ function preload() {
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
 
   //Props and textures
-  grassTexture = loadImage("/PropsTextures/grassTile.png")
-  stoneBrickTexture = loadImage("/PropsTextures/stonebrick.png")
+  deadGrassTexture = loadImage("/PropsTextures/deadGrass.png")
+  belowGrass = loadImage("/PropsTextures/belowGrass.png")
+  deadGrassPlatformM = loadImage("/PropsTextures/DGP.png")
+  deadGrassPlatformL = loadImage("/PropsTextures/DGPL.png")
+  deadGrassPlatformR = loadImage("/PropsTextures/DGPR.png")
+  stonePlatformL = loadImage("/PropsTextures/stoneLeft.png")
+  stonePlatformM = loadImage("/PropsTextures/stoneMiddle.png")
+  stonePlatformR = loadImage("/PropsTextures/stoneRight.png")
+  dirtStageL = loadImage("/PropsTextures/dirtLeft.png")
+  dirtStageR = loadImage("/PropsTextures/dirtRight.png")
+  dirtStageM = loadImage("/PropsTextures/dirtMiddle.png")
+  deadGrassStageL = loadImage("/PropsTextures/DGSL.png")
+  deadGrassStageM = loadImage("/PropsTextures/DGS.png")
+  deadGrassStageR = loadImage("/PropsTextures/DGSR.png")
+
+  //Background
+  backgroundLayer1 = loadImage("PropsTextures/bgL1.png")
 }
 
+//Platform tables
+let deadGrassPlatform;
+let stonePlatform
+let dirtStage
+let deadGrassStage;
 
 //Humanoid class which includes anything all player/playerlike entities
 class Humanoid {
@@ -682,7 +715,7 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage) {
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY, canClimb) {
     this.X = xPos;
     this.Y = yPos;
     this.sizeX = xSize;
@@ -690,27 +723,38 @@ class Platform {
     this.oneWay = oneWay;
     this.color = theColor ? theColor: "white";
     this.img = theImage
+    this.tileXSize = tileX
+    this.tileYSize = tileY
+    this.canClimb = canClimb
   }
 
   //Display platform with texture or fallback as rectangle
   display() {
     if (this.img) {
-      let displaySizeX = 150
-      let displaySizeY = 150
+      let displaySizeX = this.tileXSize ? this.tileXSize: 150
+      let displaySizeY = this.tileYSize ? this.tileYSize : 150
       
       push(); //save current settings
       imageMode(CORNER) //Return to image mode corner because tiling is too hard for me with center
 
+      
       for (let x = 0; x < this.sizeX; x += displaySizeX) {
         for (let y = 0; y < this.sizeY; y += displaySizeY){
+
+          let currentImage = this.img
+          if (Array.isArray(this.img)) {
+            currentImage = x === 0 ? this.img[0] : (x + displaySizeX >= this.sizeX) ? this.img[2] : this.img[1]
+          }
+
+
           let dW = Math.min(displaySizeX, this.sizeX - x) 
           let dH = Math.min(displaySizeY, this.sizeY - y)
           
-          let sourceW = map(dW, 0, displaySizeX, 0, this.img.width)
-          let sourceH = map(dH, 0, displaySizeY, 0, this.img.height)
+          let sourceW = map(dW, 0, displaySizeX, 0, currentImage.width)
+          let sourceH = map(dH, 0, displaySizeY, 0, currentImage.height)
 
           image(
-            this.img,
+            currentImage,
             (this.X - this.sizeX / 2) + x,  //Since we are on image mode center we need to re,
             (this.Y - this.sizeY / 2) + y,
             dW, dH,
@@ -771,7 +815,7 @@ class Platform {
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 1000 &&
-      !item.grounded
+      !item.grounded && this.canClimb
     ) {
       
       //Skip ledge climb if this function is being applied to a hurt block
@@ -792,7 +836,7 @@ class Platform {
       item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 1000 &&
-      !item.grounded
+      !item.grounded && this.canClimb
     ) {
 
       console.log("Grabbed left")
@@ -827,7 +871,6 @@ class Platform {
       if (!(this instanceof HurtBlock)) {
         item.lastCheckpointX = item.X;
         item.lastCheckpointY = item.Y;
-        console.log("SET GROUND")
       }
 
       
@@ -907,40 +950,6 @@ class HurtBlock extends Platform{
 
 }
 
-//Helper function to draw small tower of oneway collision platforms
-function makeTower() {
-  for (let i = groundLevel - 75; i > 0; i -= 80) {
-    platforms.push(new Platform(20, i, 100, 10, true, "blue"));
-  }
-}
-
-//Helper function to loop through entities and platforms and check collisions
-function checkAllcollisions() {
-  for (let platform of platforms) {
-    for (let person of entities) {
-      platform.checkcollision(person);
-    }
-  }
-}
-
-function drawAllPlatforms() {
-  for (let platform of platforms) {
-    platform.display();
-  }
-}
-
-function drawAllEntities() {
-  for (let entity of entities) {
-    entity.display();
-  }
-}
-
-function applyAllPhysics() {
-  for (let entity of entities) {
-    entity.applyForces();
-  }
-}
-
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
@@ -954,38 +963,47 @@ function setup() {
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
 
-  
+  deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR]
+  stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR]
+  dirtStage = [dirtStageL, dirtStageM, dirtStageR]
+  deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR]
+
   platforms.push(
     new Platform(
       width/2,
       height - floorHeight / 2,
       width * 4,
-      floorHeight,
+      48,
       false,
       "green",
-      stoneBrickTexture
+      deadGrassTexture,
+      48, 96, false
     )
   );
 
-  platforms.push(new Platform (
-    width/2 + 100,
-    groundLevel - 70,
-    100,
-    140,
-    false,
-    "grey",
-    stoneBrickTexture
-  ))
+  platforms.push(
+    new Platform(
+      width/2,
+      height + floorHeight * 2,
+      width * 4,
+      floorHeight * 4,
+      false,
+      "green",
+      belowGrass,
+      48, 96, false
+    )
+  )
 
-  //Old demo stage
   makeTower();
 
-  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "white"));
+  platforms.push(new Platform(250, groundLevel - 120, 100, 10, false, "white", false, 0, 0, true));
 
-  platforms.push(new Platform(400, groundLevel - 80, 100, 50, false, "white", stoneBrickTexture));
+  platforms.push(new Platform(400, groundLevel - 80, 96, 9, false, "white", deadGrassPlatform, 24, 9, true));
   platforms.push(new HurtBlock(600, groundLevel - 120, 100, 10, false, "red"));
   player = new Player(width / 2, groundLevel - 100);
   entities.push(player);
+
+  createStage(1200, groundLevel - 12 * 4, 26, 5)
 
   console.log(platforms);
 }
@@ -993,14 +1011,17 @@ function setup() {
 function draw() {
   scale(1.25);
 
-  background(27, 34, 56);
+  background(245, 245, 220);
+  //drawBackground()
+
+
   player.update();
   applyAllPhysics();
   checkAllcollisions();
 
   //Follow player with camera
-  let targetX = width / 2 - player.X * 1.25;
-  let targetY = height / 2 - player.Y;
+  let targetX = width / 2 - player.X ;
+  let targetY = height / 2 - player.Y + 50;
 
   cameraX = lerp(cameraX, targetX, 0.4);
   cameraY = lerp(cameraY, targetY, 0.4);
@@ -1037,10 +1058,57 @@ function mousePressed() {
   player.inputBuffers.punch = millis();
 }
 
+//Helper function to draw small tower of oneway collision platforms
+function makeTower() {
+  for (let i = groundLevel - 75; i > 0; i -= 80) {
+    platforms.push(new Platform(20, i, 96, 9, true, "blue", stonePlatform, 24, 9, true));
+  }
+}
 
+//Helper function to loop through entities and platforms and check collisions
+function checkAllcollisions() {
+  for (let platform of platforms) {
+    for (let person of entities) {
+      platform.checkcollision(person);
+    }
+  }
+}
+
+function drawAllPlatforms() {
+  for (let platform of platforms) {
+    platform.display();
+  }
+}
+
+function drawAllEntities() {
+  for (let entity of entities) {
+    entity.display();
+  }
+}
+
+function applyAllPhysics() {
+  for (let entity of entities) {
+    entity.applyForces();
+  }
+}
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-
-  
 }
+
+function drawBackground() {
+  let bgX = (cameraX * 0.2) % width;
+
+  image(backgroundLayer1, bgX, 200, width, height);
+  image(backgroundLayer1, bgX + width, 200 , width, height);
+  image(backgroundLayer1, bgX - width, 200 , width, height);
+}
+
+function createStage(x, y, blocksWide, blocksTall) {
+  let dirtH = 24 * (blocksTall - 1)
+  let grassH = 24 
+
+  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false))
+  platforms.push(new Platform(x, y - (dirtH / 2) - (grassH / 2), grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)) 
+}
+
