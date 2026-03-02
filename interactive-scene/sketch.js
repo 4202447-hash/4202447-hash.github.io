@@ -1,9 +1,11 @@
-// Project Title
-// Your Name
-// Date
+// Rainbow Runner
+// Ayman Faisal
+// 3/2/2026
 //
 // Extra for Experts:
-// - describe what you did to take this project "above and beyond"
+// - My project includes the use of spritesheets, to make animations, classes, and I made the camera follow the player
+  
+//Controls: WASD To move, Shift to roll, hold shift to sprint, M1 to punch, space to jump
 
 
 //Constants
@@ -64,30 +66,30 @@ function preload() {
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
 
   //Props and textures
-  deadGrassTexture = loadImage("/PropsTextures/deadGrass.png")
-  belowGrass = loadImage("/PropsTextures/belowGrass.png")
-  deadGrassPlatformM = loadImage("/PropsTextures/DGP.png")
-  deadGrassPlatformL = loadImage("/PropsTextures/DGPL.png")
-  deadGrassPlatformR = loadImage("/PropsTextures/DGPR.png")
-  stonePlatformL = loadImage("/PropsTextures/stoneLeft.png")
-  stonePlatformM = loadImage("/PropsTextures/stoneMiddle.png")
-  stonePlatformR = loadImage("/PropsTextures/stoneRight.png")
-  dirtStageL = loadImage("/PropsTextures/dirtLeft.png")
-  dirtStageR = loadImage("/PropsTextures/dirtRight.png")
-  dirtStageM = loadImage("/PropsTextures/dirtMiddle.png")
-  deadGrassStageL = loadImage("/PropsTextures/DGSL.png")
-  deadGrassStageM = loadImage("/PropsTextures/DGS.png")
-  deadGrassStageR = loadImage("/PropsTextures/DGSR.png")
-  spikeUp = loadImage("/PropsTextures/spikeUp.png")
+  deadGrassTexture = loadImage("/PropsTextures/deadGrass.png");
+  belowGrass = loadImage("/PropsTextures/belowGrass.png");
+  deadGrassPlatformM = loadImage("/PropsTextures/DGP.png");
+  deadGrassPlatformL = loadImage("/PropsTextures/DGPL.png");
+  deadGrassPlatformR = loadImage("/PropsTextures/DGPR.png");
+  stonePlatformL = loadImage("/PropsTextures/stoneLeft.png");
+  stonePlatformM = loadImage("/PropsTextures/stoneMiddle.png");
+  stonePlatformR = loadImage("/PropsTextures/stoneRight.png");
+  dirtStageL = loadImage("/PropsTextures/dirtLeft.png");
+  dirtStageR = loadImage("/PropsTextures/dirtRight.png");
+  dirtStageM = loadImage("/PropsTextures/dirtMiddle.png");
+  deadGrassStageL = loadImage("/PropsTextures/DGSL.png");
+  deadGrassStageM = loadImage("/PropsTextures/DGS.png");
+  deadGrassStageR = loadImage("/PropsTextures/DGSR.png");
+  spikeUp = loadImage("/PropsTextures/spikeUp.png");
 
   //Background
-  backgroundLayer1 = loadImage("PropsTextures/bgL1.png")
+  backgroundLayer1 = loadImage("PropsTextures/bgL1.png");
 }
 
 //Platform tables
 let deadGrassPlatform;
-let stonePlatform
-let dirtStage
+let stonePlatform;
+let dirtStage;
 let deadGrassStage;
 
 //Humanoid class which includes anything all player/playerlike entities
@@ -104,6 +106,7 @@ class Humanoid {
     moveSpeed,
     givenScale
   ) {
+
     //States and stats
     this.imageScale = givenScale || 2;
     this.X = x || width / 2;
@@ -333,6 +336,7 @@ class Humanoid {
     }
   }
 
+  //Visual effect for when he gets hit
   gotHit() {
     if (millis() - this.lastHitTaken < 150) {
       return;
@@ -356,8 +360,8 @@ class Player extends Humanoid {
     //Player specific variables
     this.playerControlled = true;
     this.lastHit = 0;
-    this.lastCheckpointX = y
-    this.lastCheckpointY = x
+    this.lastCheckpointX = y;
+    this.lastCheckpointY = x;
 
     //Animations
     this.frameWidth = 0;
@@ -648,13 +652,13 @@ class Player extends Humanoid {
     }
 
     if (this.actionState === "rolling") {
-      drawingContext.shadowBlur = 15
-      drawingContext.shadowColor = color(0, 0, 255)
+      drawingContext.shadowBlur = 25;
+      drawingContext.shadowColor = color(0, 0, 255);
     }
 
     if (this.actionState.startsWith("punch")) {
-      drawingContext.shadowBlur = 20
-      drawingContext.shadowColor = color(255,0 ,0)
+      drawingContext.shadowBlur = 20;
+      drawingContext.shadowColor = color(255,0 ,0);
     }
 
     image(
@@ -707,11 +711,11 @@ class Player extends Humanoid {
   }
 
   respawn() {
-    console.log(this.lastCheckpointX, this.lastCheckpointY)
-    this.X = this.lastCheckpointX
-    this.Y = this.lastCheckpointY - 5
-    this.xVel = 0
-    this.yVel = 0
+    console.log(this.lastCheckpointX, this.lastCheckpointY);
+    this.X = this.lastCheckpointX;
+    this.Y = this.lastCheckpointY - 5;
+    this.xVel = 0;
+    this.yVel = 0;
   }
 }
 
@@ -724,46 +728,46 @@ class Platform {
     this.sizeY = ySize;
     this.oneWay = oneWay;
     this.color = theColor ? theColor: "white";
-    this.img = theImage
-    this.tileXSize = tileX
-    this.tileYSize = tileY
-    this.canClimb = canClimb
+    this.img = theImage;
+    this.tileXSize = tileX;
+    this.tileYSize = tileY;
+    this.canClimb = canClimb;
   }
 
   //Display platform with texture or fallback as rectangle
   display() {
     if (this.img) {
-      let displaySizeX = this.tileXSize ? this.tileXSize: 150
-      let displaySizeY = this.tileYSize ? this.tileYSize : 150
+      let displaySizeX = this.tileXSize ? this.tileXSize: 150;
+      let displaySizeY = this.tileYSize ? this.tileYSize : 150;
       
       push(); //save current settings
-      imageMode(CORNER) //Return to image mode corner because tiling is too hard for me with center
+      imageMode(CORNER); //Return to image mode corner because tiling is too hard for me with center
 
       
       for (let x = 0; x < this.sizeX; x += displaySizeX) {
         for (let y = 0; y < this.sizeY; y += displaySizeY){
 
-          let currentImage = this.img
+          let currentImage = this.img;
           if (Array.isArray(this.img)) {
-            currentImage = x === 0 ? this.img[0] : (x + displaySizeX >= this.sizeX) ? this.img[2] : this.img[1]
+            currentImage = x === 0 ? this.img[0] : x + displaySizeX >= this.sizeX ? this.img[2] : this.img[1];
           }
 
 
-          let dW = Math.min(displaySizeX, this.sizeX - x) 
-          let dH = Math.min(displaySizeY, this.sizeY - y)
+          let dW = Math.min(displaySizeX, this.sizeX - x); 
+          let dH = Math.min(displaySizeY, this.sizeY - y);
           
-          let sourceW = map(dW, 0, displaySizeX, 0, currentImage.width)
-          let sourceH = map(dH, 0, displaySizeY, 0, currentImage.height)
+          let sourceW = map(dW, 0, displaySizeX, 0, currentImage.width);
+          let sourceH = map(dH, 0, displaySizeY, 0, currentImage.height);
 
           image(
             currentImage,
-            (this.X - this.sizeX / 2) + x,  //Since we are on image mode center we need to re,
-            (this.Y - this.sizeY / 2) + y,
+            this.X - this.sizeX / 2 + x,  //Since we are on image mode center we need to re,
+            this.Y - this.sizeY / 2 + y,
             dW, dH,
             0, 0,
             sourceW,
             sourceH
-          )
+          );
         }
       }
       pop(); //Return to old settings
@@ -780,10 +784,10 @@ class Platform {
     item.actionState = "ledgeClimb";
     item.xVel = 0;
     item.yVel = 0;
-    item.currentPlatform = this
+    item.currentPlatform = this;
 
 
-    item.Y = this.top + (item.sizeY * 0.25) - 4;
+    item.Y = this.top + item.sizeY * 0.25 - 4;
 
     item.X =
       side === "left"
@@ -799,7 +803,7 @@ class Platform {
     let itemRight = item.X + item.sizeX / 2;
     let itemTop = item.Y - item.sizeY / 2;
     let handY = item.Y - item.sizeY / 4;
-    let headY = item.Y - item.sizeY / 2
+    let headY = item.Y - item.sizeY / 2;
     let itemHit = false;
 
     this.top = this.Y - this.sizeY / 2;
@@ -822,7 +826,7 @@ class Platform {
       
       //Skip ledge climb if this function is being applied to a hurt block
       if (this instanceof HurtBlock) {
-        return true
+        return true;
       }
 
       this.snapToLedge(item, "right");
@@ -841,10 +845,10 @@ class Platform {
       !item.grounded && this.canClimb
     ) {
 
-      console.log("Grabbed left")
+      console.log("Grabbed left");
 
       if (this instanceof HurtBlock) {
-        return true
+        return true;
       }
 
       this.snapToLedge(item, "left");
@@ -867,7 +871,7 @@ class Platform {
         item.actionState = "landing";
         item.timeSinceLand = millis();
         itemHit = true;
-        item.phasingBottom = false
+        item.phasingBottom = false;
       }
 
       if (!(this instanceof HurtBlock)) {
@@ -876,7 +880,7 @@ class Platform {
       }
 
       
-      item.currentPlatform = this
+      item.currentPlatform = this;
       item.Y = this.top - item.sizeY / 2;
 
       //Only set yVel to 0 if we're not going up
@@ -928,7 +932,7 @@ class Platform {
         item.Y = this.bottom + item.sizeY / 2;
         console.log("hit two way platform");
         item.yVel = 0;
-        itemHit = true
+        itemHit = true;
       }
     }
     return itemHit;
@@ -965,29 +969,41 @@ function setup() {
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
 
-  deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR]
-  stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR]
-  dirtStage = [dirtStageL, dirtStageM, dirtStageR]
-  deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR]
+  deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR];
+  stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR];
+  dirtStage = [dirtStageL, dirtStageM, dirtStageR];
+  deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
 
   //Stage setups
   
   //Left island
-  createStage(width / 2 - 300, groundLevel , 10, 20)
+  createStage(width / 2 - 600, groundLevel , 10, 30);
+  createStage(width / 2 - 300, groundLevel , 10, 20);
 
   //Way to right cluster
   makeTower(width / 2 - 25, groundLevel - 330, 4);
+  
+  //Random stage generator
+  for (let i = 900; i < 10000; i += random(300, 500)) {
+
+    createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
+  }
+
+  //Death block underneat
+  createSpikePit(width/2, groundLevel + 500, 200);
 
   //Right cluster
-  createStage(width / 2 + 600, groundLevel, 10, 35)
-  createStage(width / 2 + 355, groundLevel , 14, 50)
-  createStage(width / 2 + 800, groundLevel , 14, 50)
-  createSpikePit(width / 2 + 577, groundLevel - (37 * 12), 7 )
+  createStage(width / 2 + 600, groundLevel, 10, 35);
+  createStage(width / 2 + 355, groundLevel , 14, 50);
+  createStage(width / 2 + 800, groundLevel , 14, 50);
+  createSpikePit(width / 2 + 577, groundLevel - 37 * 12, 7 );
 
   //Main floor
-  createStage(width / 2, groundLevel - 50, 24, 4)
+  createStage(width / 2, groundLevel - 50, 24, 7);
   
   player = new Player(width / 2, groundLevel - 250);
+
+  otherPlayer = new Player(width / 4, groundLevel - 250);
   entities.push(player);
 
   console.log(platforms);
@@ -1047,7 +1063,7 @@ function mousePressed() {
 function makeTower(x, y, amount) {
   let spacing = 80; 
   for (let i = 0; i < amount; i++) {
-    let floorY = y - (i * spacing);
+    let floorY = y - i * spacing;
     platforms.push(new Platform(x, floorY, 96, 9, true, "blue", stonePlatform, 24, 9, true));
   }
 }
@@ -1073,32 +1089,37 @@ function drawAllEntities() {
   }
 }
 
+//Helper function to apply physics of all characters
 function applyAllPhysics() {
   for (let entity of entities) {
     entity.applyForces();
   }
 }
 
+//Resizes the canvas with the window
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
+//Unused function to draw a parallex background 
 function drawBackground() {
-  let bgX = (cameraX * 0.2) % width;
+  let bgX = cameraX * 0.2 % width;
 
   image(backgroundLayer1, bgX, 200, width, height);
   image(backgroundLayer1, bgX + width, 200 , width, height);
   image(backgroundLayer1, bgX - width, 200 , width, height);
 }
 
+//Function to create a stage based off blocks wide/tall rather than pixels
 function createStage(x, y, blocksWide, blocksTall) {
-  let dirtH = 24 * (blocksTall - 1)
-  let grassH = 24 
+  let dirtH = 24 * (blocksTall - 1);
+  let grassH = 24; 
 
-  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false))
-  platforms.push(new Platform(x, y - (dirtH / 2) - (grassH / 2), grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)) 
+  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false));
+  platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)); 
 }
 
+//Create a spike pit based off blockswide
 function createSpikePit(x, y, blocksWide) {
   platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", spikeUp, 16, 32));
 }
