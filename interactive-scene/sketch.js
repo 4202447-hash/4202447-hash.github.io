@@ -54,36 +54,36 @@ let spikeUp;
 
 function preload() {
   //Animations
-  playerIdleSheet = loadImage("/interactive-scene/Character/idle.png");
-  playerrollingSheet = loadImage("/interactive-scene/Character/rolling.png");
-  playerJumpSheet = loadImage("/interactive-scene/Character/jump.png");
-  playerRunningSheet = loadImage("/interactive-scene/Character/running.png");
-  playerPunch1 = loadImage("/interactive-scene/Character/punch_1.png");
-  playerPunch2 = loadImage("/interactive-scene/Character/punch_2.png");
-  playerPunch3 = loadImage("/interactive-scene/Character/punch_3.png");
-  playerSprintSheet = loadImage("/interactive-scene/Character/sprint.png");
-  playerUpwardPunch = loadImage("/interactive-scene/Character/upPunch.png");
-  playerLedgeSheet = loadImage("/interactive-scene/Character/ledgeClimb.png");
+  playerIdleSheet = loadImage("Character/idle.png");
+  playerrollingSheet = loadImage("Character/rolling.png");
+  playerJumpSheet = loadImage("Character/jump.png");
+  playerRunningSheet = loadImage("Character/running.png");
+  playerPunch1 = loadImage("Character/punch_1.png");
+  playerPunch2 = loadImage("Character/punch_2.png");
+  playerPunch3 = loadImage("Character/punch_3.png");
+  playerSprintSheet = loadImage("Character/sprint.png");
+  playerUpwardPunch = loadImage("Character/upPunch.png");
+  playerLedgeSheet = loadImage("Character/ledgeClimb.png");
 
   //Props and textures
-  deadGrassTexture = loadImage("/interactive-scene/PropsTextures/deadGrass.png");
-  belowGrass = loadImage("/interactive-scene/PropsTextures/belowGrass.png");
-  deadGrassPlatformM = loadImage("/interactive-scene/PropsTextures/DGP.png");
-  deadGrassPlatformL = loadImage("/interactive-scene/PropsTextures/DGPL.png");
-  deadGrassPlatformR = loadImage("/interactive-scene/PropsTextures/DGPR.png");
-  stonePlatformL = loadImage("/interactive-scene/PropsTextures/stoneLeft.png");
-  stonePlatformM = loadImage("/interactive-scene/PropsTextures/stoneMiddle.png");
-  stonePlatformR = loadImage("/interactive-scene/PropsTextures/stoneRight.png");
-  dirtStageL = loadImage("/interactive-scene/PropsTextures/dirtLeft.png");
-  dirtStageR = loadImage("/interactive-scene/PropsTextures/dirtRight.png");
-  dirtStageM = loadImage("/interactive-scene/PropsTextures/dirtMiddle.png");
-  deadGrassStageL = loadImage("/interactive-scene/PropsTextures/DGSL.png");
-  deadGrassStageM = loadImage("/interactive-scene/PropsTextures/DGS.png");
-  deadGrassStageR = loadImage("/interactive-scene/PropsTextures/DGSR.png");
-  spikeUp = loadImage("/interactive-scene/PropsTextures/spikeUp.png");
+  deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
+  belowGrass = loadImage("PropsTextures/belowGrass.png");
+  deadGrassPlatformM = loadImage("PropsTextures/DGP.png");
+  deadGrassPlatformL = loadImage("PropsTextures/DGPL.png");
+  deadGrassPlatformR = loadImage("PropsTextures/DGPR.png");
+  stonePlatformL = loadImage("PropsTextures/stoneLeft.png");
+  stonePlatformM = loadImage("PropsTextures/stoneMiddle.png");
+  stonePlatformR = loadImage("PropsTextures/stoneRight.png");
+  dirtStageL = loadImage("PropsTextures/dirtLeft.png");
+  dirtStageR = loadImage("PropsTextures/dirtRight.png");
+  dirtStageM = loadImage("PropsTextures/dirtMiddle.png");
+  deadGrassStageL = loadImage("PropsTextures/DGSL.png");
+  deadGrassStageM = loadImage("PropsTextures/DGS.png");
+  deadGrassStageR = loadImage("PropsTextures/DGSR.png");
+  spikeUp = loadImage("PropsTextures/spikeUp.png");
 
   //Background
-  backgroundLayer1 = loadImage("/interactive-scene/PropsTextures/bgL1.png");
+  backgroundLayer1 = loadImage("PropsTextures/bgL1.png");
 }
 
 //Platform tables
