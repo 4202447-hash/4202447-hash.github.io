@@ -66,21 +66,21 @@ function preload() {
   playerLedgeSheet = loadImage("/interactive-scene/Character/ledgeClimb.png");
 
   //Props and textures
-  deadGrassTexture = loadImage("/interactive-scene//PropsTextures/deadGrass.png");
-  belowGrass = loadImage("/interactive-scene//PropsTextures/belowGrass.png");
-  deadGrassPlatformM = loadImage("/interactive-scene//PropsTextures/DGP.png");
-  deadGrassPlatformL = loadImage("/interactive-scene//PropsTextures/DGPL.png");
-  deadGrassPlatformR = loadImage("/interactive-scene//PropsTextures/DGPR.png");
-  stonePlatformL = loadImage("/interactive-scene//PropsTextures/stoneLeft.png");
-  stonePlatformM = loadImage("/interactive-scene//PropsTextures/stoneMiddle.png");
-  stonePlatformR = loadImage("/interactive-scene//PropsTextures/stoneRight.png");
-  dirtStageL = loadImage("/interactive-scene//PropsTextures/dirtLeft.png");
-  dirtStageR = loadImage("/interactive-scene//PropsTextures/dirtRight.png");
-  dirtStageM = loadImage("/interactive-scene//PropsTextures/dirtMiddle.png");
-  deadGrassStageL = loadImage("/interactive-scene//PropsTextures/DGSL.png");
-  deadGrassStageM = loadImage("/interactive-scene//PropsTextures/DGS.png");
-  deadGrassStageR = loadImage("/interactive-scene//PropsTextures/DGSR.png");
-  spikeUp = loadImage("/interactive-scene//PropsTextures/spikeUp.png");
+  deadGrassTexture = loadImage("/interactive-scene/PropsTextures/deadGrass.png");
+  belowGrass = loadImage("/interactive-scene/PropsTextures/belowGrass.png");
+  deadGrassPlatformM = loadImage("/interactive-scene/PropsTextures/DGP.png");
+  deadGrassPlatformL = loadImage("/interactive-scene/PropsTextures/DGPL.png");
+  deadGrassPlatformR = loadImage("/interactive-scene/PropsTextures/DGPR.png");
+  stonePlatformL = loadImage("/interactive-scene/PropsTextures/stoneLeft.png");
+  stonePlatformM = loadImage("/interactive-scene/PropsTextures/stoneMiddle.png");
+  stonePlatformR = loadImage("/interactive-scene/PropsTextures/stoneRight.png");
+  dirtStageL = loadImage("/interactive-scene/PropsTextures/dirtLeft.png");
+  dirtStageR = loadImage("/interactive-scene/PropsTextures/dirtRight.png");
+  dirtStageM = loadImage("/interactive-scene/PropsTextures/dirtMiddle.png");
+  deadGrassStageL = loadImage("/interactive-scene/PropsTextures/DGSL.png");
+  deadGrassStageM = loadImage("/interactive-scene/PropsTextures/DGS.png");
+  deadGrassStageR = loadImage("/interactive-scene/PropsTextures/DGSR.png");
+  spikeUp = loadImage("/interactive-scene/PropsTextures/spikeUp.png");
 
   //Background
   backgroundLayer1 = loadImage("/interactive-scene/PropsTextures/bgL1.png");
