@@ -721,7 +721,7 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY, canClimb) {
+  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock) {
     this.X = xPos;
     this.Y = yPos;
     this.sizeX = xSize;
@@ -860,7 +860,8 @@ class Platform {
       itemRight > this.left  &&
       itemLeft < this.right &&
       itemBottom >= this.top &&
-      itemBottom <= this.top + max(5, item.yVel + 2)
+      itemBottom <= this.top + max(5, item.yVel + 2) &&
+      !this.bottomBlock
     ) {
       if (item.phasingBottom === true && item.currentPlatform === this && this.oneWay) {
         return ;
@@ -989,8 +990,8 @@ function setup() {
     createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
   }
 
-  //Death block underneat
-  createSpikePit(width/2, groundLevel + 500, 200);
+  //Death block underneath
+  createSpikePit(width/2, groundLevel + 500, 800);
 
   //Right cluster
   createStage(width / 2 + 600, groundLevel, 10, 35);
@@ -1115,7 +1116,7 @@ function createStage(x, y, blocksWide, blocksTall) {
   let dirtH = 24 * (blocksTall - 1);
   let grassH = 24; 
 
-  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false));
+  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false, true));
   platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)); 
 }
 
