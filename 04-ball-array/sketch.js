@@ -21,7 +21,7 @@ function drawBall(){
     x: random(width),
     y: random(height),
     dx: random(-5, 5),
-    dY: random(-5, 5),
+    dy: random(-5, 5),
     radius: random(5, 25)
   };
 
