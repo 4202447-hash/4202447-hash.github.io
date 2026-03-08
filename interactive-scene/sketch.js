@@ -9,18 +9,21 @@
 
 
 //Constants
-let gravitationalForce = 0.3;
-let frictionalForce = 0.5;
-let footOffset = 2;
+const gravitationalForce = 0.3;
+const frictionalForce = 0.5;
+const footOffset = 2;
+
+//Important Globals and arrays
 let cameraX = 0;
 let cameraY = 0;
 let floorHeight = 48;
 let groundLevel;
-
-//Globals
 let player;
 let platforms = [];
 let entities = [];
+let brObjects = [];
+let stages = [testStage]
+let screenShake = 0
 
 //Animations and sprites
 let playerIdleSheet;
@@ -52,6 +55,10 @@ let deadGrassStageM;
 let deadGrassStageR;
 let spikeUp;
 
+//Breakable objects
+let crate;
+
+
 function preload() {
   //Animations
   playerIdleSheet = loadImage("Character/idle.png");
@@ -82,6 +89,9 @@ function preload() {
   deadGrassStageR = loadImage("PropsTextures/DGSR.png");
   spikeUp = loadImage("PropsTextures/spikeUp.png");
 
+  //Breakable objects
+  crate = loadImage("BreakableObjects/Crate.png");
+
   //Background
   backgroundLayer1 = loadImage("PropsTextures/bgL1.png");
 }
@@ -109,8 +119,8 @@ class Humanoid {
 
     //States and stats
     this.imageScale = givenScale || 2;
-    this.X = x || width / 2;
-    this.Y = y || height / 2;
+    this.x = x || width / 2;
+    this.y = y || height / 2;
     this.xVel = 0;
     this.yVel = 0;
     this.sizeY = sizeOfY * this.imageScale || 35 * this.imageScale;
@@ -145,6 +155,8 @@ class Humanoid {
 
     //Stats and equips
     this.currentWeapon = "punch";
+    this.rangeX = 20
+    this.rangeY = 10
 
     //Table of non conflict states
     this.states = [
@@ -184,7 +196,6 @@ class Humanoid {
       abs(this.xVel) <= 6
     ) {
       if (this.moveDir !== 0) {
-        //Let accell be walkspeed or half as much as walk speed in air
         this.speed = this.actionState === "sprinting" ? 5 : 3;
         let accel = this.speed;
         this.directionFacing = this.moveDir === 1 ? "right" : "left";
@@ -221,17 +232,17 @@ class Humanoid {
       this.yVel += gravitationalForce;
     }
 
-    this.Y += this.yVel;
+    this.y += this.yVel;
 
     // Apply bounds
-    // let nextX = this.X + this.xVel;
+    // let nextX = this.x + this.xVel;
 
     // if (nextX >= this.sizeX / 2 && nextX <= width - this.sizeX / 2) {
-    //   this.X = nextX;
+    //   this.x = nextX;
     // }
 
-    let nextX = this.X + this.xVel;
-    this.X = nextX;
+    let nextX = this.x + this.xVel;
+    this.x = nextX;
 
     //Apply friction if not rolling, 1/4 in air
     if (this.moveDir === 0 && this.actionState !== "rolling") {
@@ -362,6 +373,8 @@ class Player extends Humanoid {
     this.lastHit = 0;
     this.lastCheckpointX = y;
     this.lastCheckpointY = x;
+    this.hitItems = []
+    this.alrHit = []
 
     //Animations
     this.frameWidth = 0;
@@ -551,6 +564,7 @@ class Player extends Humanoid {
 
   //Run every frame to update state/anims/inputs
   update() {
+    
     //Reset animation frame
     if (this.actionState !== this.lastActionState) {
       this.currentFrame = 0;
@@ -580,6 +594,29 @@ class Player extends Humanoid {
     //Run other functions
     this.checkInputBuffs();
     this.handleState();
+
+    //If attacking run hitbox chcks
+    let facing = this.directionFacing === "left" ? -1 : 1
+
+    if (this.actionState.startsWith(this.currentWeapon)){
+      if (this.actionState.includes("Up")) {
+        this.hitItems = getItemsInArea(this.x, this.y - 60, this.rangeX, this.rangeY, this)
+      }
+
+      else {
+        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this)
+      }
+    }
+
+    if (this.hitItems) {
+      for (let item of this.hitItems) {
+        if (!this.alrHit.includes(item) && item.active){
+          this.alrHit.push(item)
+          item.onHit()
+          screenShake = 4
+        }
+      }
+    }
   }
 
   //Check input buffers
@@ -610,7 +647,7 @@ class Player extends Humanoid {
 
     //Make origin at player's current position to flip player image when neccesary
     push();
-    translate(this.X, this.Y);
+    translate(this.x, this.y);
 
     if (this.directionFacing === "left") {
       scale(-1, 1); // Flip horizontally
@@ -629,10 +666,10 @@ class Player extends Humanoid {
       //If animation is onetime, return to idle after finished
       else if (this.currentFrame === 0 && !anim.shouldLoop && anim.oneTime) {
         if (this.actionState === "ledgeClimb") {
-          this.Y -= this.sizeY * 0.7;
+          this.y -= this.sizeY * 0.7;
 
           let moveForward = 15;
-          this.X +=
+          this.x +=
             this.directionFacing === "left" ? -moveForward : moveForward;
 
           this.grounded = true;
@@ -702,18 +739,21 @@ class Player extends Humanoid {
     if (keyIsDown(87)) {
       this.actionState = this.currentWeapon + "Up";
       this.currentHit = 1;
-      return;
+      
     }
     else {
       this.actionState = this.currentWeapon + str(this.currentHit);
       this.currentHit += 1;
     }
+
+    this.alrHit = []
+
   }
 
   respawn() {
     console.log(this.lastCheckpointX, this.lastCheckpointY);
-    this.X = this.lastCheckpointX;
-    this.Y = this.lastCheckpointY - 5;
+    this.x = this.lastCheckpointX;
+    this.y = this.lastCheckpointY - 5;
     this.xVel = 0;
     this.yVel = 0;
   }
@@ -721,48 +761,49 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock) {
-    this.X = xPos;
-    this.Y = yPos;
-    this.sizeX = xSize;
-    this.sizeY = ySize;
+  constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock) {
+    this.x = xPos;
+    this.y = yPos;
+    this.sizeX = sizeX;
+    this.sizeY = sizeY;
     this.oneWay = oneWay;
     this.color = theColor ? theColor: "white";
     this.img = theImage;
-    this.tileXSize = tileX;
-    this.tileYSize = tileY;
+    this.tilesizeX = tileX;
+    this.tilesizeY = tileY;
     this.canClimb = canClimb;
+    this.bottomBlock = bottomBlock
   }
 
   //Display platform with texture or fallback as rectangle
   display() {
     if (this.img) {
-      let displaySizeX = this.tileXSize ? this.tileXSize: 150;
-      let displaySizeY = this.tileYSize ? this.tileYSize : 150;
+      let displasizeYX = this.tilesizeX ? this.tilesizeX: 150;
+      let displasizeYY = this.tilesizeY ? this.tilesizeY : 150;
       
       push(); //save current settings
       imageMode(CORNER); //Return to image mode corner because tiling is too hard for me with center
 
       
-      for (let x = 0; x < this.sizeX; x += displaySizeX) {
-        for (let y = 0; y < this.sizeY; y += displaySizeY){
+      for (let x = 0; x < this.sizeX; x += displasizeYX) {
+        for (let y = 0; y < this.sizeY; y += displasizeYY){
 
           let currentImage = this.img;
           if (Array.isArray(this.img)) {
-            currentImage = x === 0 ? this.img[0] : x + displaySizeX >= this.sizeX ? this.img[2] : this.img[1];
+            currentImage = x === 0 ? this.img[0] : x + displasizeYX >= this.sizeX ? this.img[2] : this.img[1];
           }
 
 
-          let dW = Math.min(displaySizeX, this.sizeX - x); 
-          let dH = Math.min(displaySizeY, this.sizeY - y);
+          let dW = Math.min(displasizeYX, this.sizeX - x); 
+          let dH = Math.min(displasizeYY, this.sizeY - y);
           
-          let sourceW = map(dW, 0, displaySizeX, 0, currentImage.width);
-          let sourceH = map(dH, 0, displaySizeY, 0, currentImage.height);
+          let sourceW = map(dW, 0, displasizeYX, 0, currentImage.width);
+          let sourceH = map(dH, 0, displasizeYY, 0, currentImage.height);
 
           image(
             currentImage,
-            this.X - this.sizeX / 2 + x,  //Since we are on image mode center we need to re,
-            this.Y - this.sizeY / 2 + y,
+            this.x - this.sizeX / 2 + x,  //Since we are on image mode center we need to re,
+            this.y - this.sizeY / 2 + y,
             dW, dH,
             0, 0,
             sourceW,
@@ -774,7 +815,7 @@ class Platform {
     }
     else{
       fill(this.color) ;
-      rect(this.X, this.Y, this.sizeX, this.sizeY);
+      rect(this.x, this.y, this.sizeX, this.sizeY);
     }
     
   }
@@ -787,9 +828,9 @@ class Platform {
     item.currentPlatform = this;
 
 
-    item.Y = this.top + item.sizeY * 0.25 - 4;
+    item.y = this.top + item.sizeY * 0.25 - 4;
 
-    item.X =
+    item.x =
       side === "left"
         ? this.left - item.sizeX / 2 + 5
         : this.right + item.sizeX / 2 - 5;
@@ -798,18 +839,18 @@ class Platform {
 
   //Check collisions with given item
   checkcollision(item) {
-    let itemBottom = item.Y + item.sizeY / 2;
-    let itemLeft = item.X - item.sizeX / 2;
-    let itemRight = item.X + item.sizeX / 2;
-    let itemTop = item.Y - item.sizeY / 2;
-    let handY = item.Y - item.sizeY / 4;
-    let headY = item.Y - item.sizeY / 2;
+    let itemBottom = item.y + item.sizeY / 2;
+    let itemLeft = item.x - item.sizeX / 2;
+    let itemRight = item.x + item.sizeX / 2;
+    let itemTop = item.y - item.sizeY / 2;
+    let handY = item.y - item.sizeY / 4;
+    let headY = item.y - item.sizeY / 2;
     let itemHit = false;
 
-    this.top = this.Y - this.sizeY / 2;
-    this.bottom = this.Y + this.sizeY / 2;
-    this.left = this.X - this.sizeX / 2;
-    this.right = this.X + this.sizeX / 2;
+    this.top = this.y - this.sizeY / 2;
+    this.bottom = this.y + this.sizeY / 2;
+    this.left = this.x - this.sizeX / 2;
+    this.right = this.x + this.sizeX / 2;
 
     //Ledge grab checks
 
@@ -860,10 +901,10 @@ class Platform {
       itemRight > this.left  &&
       itemLeft < this.right &&
       itemBottom >= this.top &&
-      itemBottom <= this.top + max(5, item.yVel + 2) &&
-      !this.bottomBlock
+      itemBottom <= this.top + max(5, item.yVel + 2)
     ) {
-      if (item.phasingBottom === true && item.currentPlatform === this && this.oneWay) {
+
+      if (this.bottomBlock || (item.phasingBottom === true && item.currentPlatform === this && this.oneWay)) {
         return ;
       }
 
@@ -876,13 +917,18 @@ class Platform {
       }
 
       if (!(this instanceof HurtBlock)) {
-        item.lastCheckpointX = item.X;
-        item.lastCheckpointY = item.Y;
+        item.lastCheckpointX = item.x;
+        item.lastCheckpointY = item.y;
       }
 
-      
+
       item.currentPlatform = this;
-      item.Y = this.top - item.sizeY / 2;
+      item.y = this.top - item.sizeY / 2;
+
+      if (item instanceof Debris && item.yVel > 0.5) {
+        item.yVel *= -0.4;
+        item.xVel *= 0.6;  
+      }
 
       //Only set yVel to 0 if we're not going up
       if (item.yVel > 0) {
@@ -905,7 +951,7 @@ class Platform {
         itemLeft < this.left &&
         item.xVel > 0
       ) {
-        item.X = this.left - item.sizeX / 2;
+        item.x = this.left - item.sizeX / 2;
         item.xVel = 0;
         return true;
       }
@@ -917,7 +963,7 @@ class Platform {
         itemRight > this.right &&
         item.xVel < 0
       ) {
-        item.X = this.right + item.sizeX / 2;
+        item.x = this.right + item.sizeX / 2;
         item.xVel = 0;
         return true;
       }
@@ -930,7 +976,7 @@ class Platform {
         itemTop <= this.bottom &&
         itemTop >= this.top
       ) {
-        item.Y = this.bottom + item.sizeY / 2;
+        item.y = this.bottom + item.sizeY / 2;
         console.log("hit two way platform");
         item.yVel = 0;
         itemHit = true;
@@ -941,8 +987,8 @@ class Platform {
 }
 
 class HurtBlock extends Platform{
-  constructor(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY) {
-    super(xPos, yPos, xSize, ySize, oneWay, theColor, theImage, tileX, tileY);
+  constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY) {
+    super(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY);
   }
 
   checkcollision(item) {
@@ -956,6 +1002,218 @@ class HurtBlock extends Platform{
   }
 
 }
+
+//Takes small parts of a given image and shoots them outwards like debris
+class Debris{
+  constructor(x, y, ogImg, width, height, broken) {
+    this.y = y + random(-20, 20)
+
+    //Useless variables only so collision functions dont crash
+    this.actionState = "Debris"
+    this.actionStates = []
+    this.directionFacing = "None"
+    this.lastLedgeClimb = 0
+    this.phasingBottom = false
+
+    this.grounded = false
+
+    //Which part of the image to take
+    let imgX = floor(random(0, ogImg.width - 20))
+    let imgY = floor(random(0, ogImg.width - 20))
+    this.sizeX = !broken ? floor(random(width/8, width/4)) : floor(random(width/7, width/4))
+    this.sizeY = !broken ? floor(random(height/12, height/6)) : floor(height/8, height/4)
+
+
+    //Create a new canvas inside the existing canvas so we can rotate, bounce, and move the chunk independently
+    this.newCanvas = createGraphics(this.sizeX, this.sizeY)
+
+    //Takes a chunk out of our existing canvas (the image we are using), and pastes it into the new canvas
+    this.newCanvas.copy(ogImg, imgX, imgY, this.sizeX, this.sizeY, 0, 0, this.sizeX, this.sizeY)
+
+    //The physics we will apply to make it look like debris
+    this.xVel = random(-5, 5)
+
+    if (broken) {
+      this.x = x
+    }
+    else {
+      this.x = this.xVel > 0 ? x + width/2 - 10 : x - width/2+ 10
+    }
+
+    this.yVel = random(-2, -1)
+    this.angle = random(TWO_PI)
+    this.rotationSpeed = random(-0.1, 0.1)
+  }
+
+  //Update position and apply physics
+  update() {
+    this.x += this.xVel
+    this.xVel *= 0.95
+    this.angle += this.rotationSpeed
+    
+    if (!this.grounded) {
+      this.yVel += gravitationalForce
+    }
+    else [
+      this.rotationSpeed = 0
+    ]
+
+    this.grounded = false
+    this.y += this.yVel
+  }
+
+  //Display new canvas
+  display() {
+    push();
+    translate(this.x, this.y)
+    rotate(this.angle)
+
+    image(this.newCanvas, 0, 0)
+    pop();
+  }
+}
+
+class breakableObject {
+  constructor(x, y, sizeX, sizeY, mainImg, health) {
+    this.x = x
+    this.y = y
+    this.sizeX = sizeX
+    this.sizeY = sizeY
+    this.img = mainImg
+    this.health = health
+    this.chunks = []
+    this.active = true
+
+    this.top = this.y - this.sizeY / 2;
+    this.bottom = this.y + this.sizeY / 2;
+    this.left = this.x - this.sizeX / 2;
+    this.right = this.x + this.sizeX / 2;
+
+  }
+
+  onHit() {
+    if (!this.active) {
+      return
+    }
+
+    this.health -= 1
+
+    if (this.health <= 0) {
+
+      for (let i = 0; i < 25; i++) {
+        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, true))
+      }
+    }
+
+    else {
+      for (let i = 0; i < 5; i++) {
+        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, false))
+      }
+    }
+  }
+
+  display() {
+    if (this.active) {
+      image(this.img, this.x, this.y, this.sizeX, this.sizeY)
+    }
+
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      this.chunks[i].update()
+      this.chunks[i].display()
+    }
+
+    if (this.health <= 0 ) {
+      this.active = false
+    }
+  }
+
+  checkCollision(item) {
+    if (!this.active) {
+      return
+    }
+
+    let itemBottom = item.y + item.sizeY / 2;
+    let itemLeft = item.x - item.sizeX / 2;
+    let itemRight = item.x + item.sizeX / 2;
+    let itemTop = item.y - item.sizeY / 2;
+
+    if (
+      itemRight > this.left  &&
+      itemLeft < this.right &&
+      itemBottom >= this.top &&
+      itemBottom <= this.top + max(5, item.yVel + 2)
+    ) {
+
+      if (item.yVel > 0.2) {
+        this.lastActionState = this.actionState;
+        item.actionState = "landing";
+        item.timeSinceLand = millis();
+        item.phasingBottom = false;
+      }
+
+      if (!(this instanceof HurtBlock)) {
+        item.lastCheckpointX = item.x;
+        item.lastCheckpointY = item.y;
+      }
+
+      
+      item.currentPlatform = this;
+      item.y = this.top - item.sizeY / 2;
+
+      //Only set yVel to 0 if we're not going up
+      if (item.yVel > 0) {
+        item.yVel = 0;
+        item.currentPlatform = this;
+        item.phasingBottom = false;
+      }
+
+      item.grounded = true;
+    }
+
+    if (
+      itemBottom > this.top + footOffset &&
+      itemTop < this.bottom - footOffset
+    ) {
+      //If item runs into left of object
+      if (
+        item.xVel >= 0 &&
+        itemRight > this.left &&
+        itemLeft < this.left &&
+        item.xVel > 0
+      ) {
+        item.x = this.left - item.sizeX / 2;
+        item.xVel = 0;
+        return
+      }
+
+      //If item runs into right of object
+      if (
+        item.xVel <= 0 &&
+        itemLeft < this.right &&
+        itemRight > this.right &&
+        item.xVel < 0
+      ) {
+        item.x = this.right + item.sizeX / 2;
+        item.xVel = 0;
+        return
+      }
+
+      //If item headbumps object
+      if (
+        !this.oneWay &&
+        itemRight > this.left &&
+        itemLeft < this.right &&
+        itemTop <= this.bottom &&
+        itemTop >= this.top
+      ) {
+        item.y = this.bottom + item.sizeY / 2;
+        console.log("hit two way platform");
+        item.yVel = 0;
+      }
+    }
+  }
+}
+
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -975,32 +1233,7 @@ function setup() {
   dirtStage = [dirtStageL, dirtStageM, dirtStageR];
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
 
-  //Stage setups
-  
-  //Left island
-  createStage(width / 2 - 600, groundLevel , 10, 30);
-  createStage(width / 2 - 300, groundLevel , 10, 20);
-
-  //Way to right cluster
-  makeTower(width / 2 - 25, groundLevel - 330, 4);
-  
-  //Random stage generator
-  for (let i = 900; i < 10000; i += random(300, 500)) {
-
-    createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
-  }
-
-  //Death block underneath
-  createSpikePit(width/2, groundLevel + 500, 800);
-
-  //Right cluster
-  createStage(width / 2 + 600, groundLevel, 10, 35);
-  createStage(width / 2 + 355, groundLevel , 14, 50);
-  createStage(width / 2 + 800, groundLevel , 14, 50);
-  createSpikePit(width / 2 + 577, groundLevel - 37 * 12, 7 );
-
-  //Main floor
-  createStage(width / 2, groundLevel - 50, 24, 7);
+  testStage()
   
   player = new Player(width / 2, groundLevel - 250);
 
@@ -1022,18 +1255,32 @@ function draw() {
   checkAllcollisions();
 
   //Follow player with camera
-  let targetX = width / 2 - player.X - 250 ;
-  let targetY = height / 2 - player.Y;
+  let targetX = width / 2 - player.x - 250 ;
+  let targetY = height / 2 - player.y;
 
   cameraX = lerp(cameraX, targetX, 0.4);
   cameraY = lerp(cameraY, targetY, 0.4);
 
   push();
-  translate(cameraX, cameraY);
+
+  let screenShakeX = 0;
+  let screenShakeY = 0;
+  
+  if (screenShake > 0.1) {
+    screenShakeX = random(-screenShake, screenShake)
+    screenShakeY = random(-screenShake, screenShake)
+    screenShake *= 0.8
+  }
+  else {
+    screenShake = 0
+  }
+
+  translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
   //Draw
   drawAllPlatforms();
   drawAllEntities();
+  drawAllBreakableObjects();
 
   pop();
 }
@@ -1076,6 +1323,20 @@ function checkAllcollisions() {
       platform.checkcollision(person);
     }
   }
+
+  for (let object of brObjects) {
+    for (let person of entities) {
+      object.checkCollision(person);
+    }
+  }
+
+  for (let platform of platforms) {
+    for (let object of brObjects) {
+      for (let chunk of object.chunks) {
+        platform.checkcollision(chunk)
+      }
+    }
+  }
 }
 
 function drawAllPlatforms() {
@@ -1087,6 +1348,12 @@ function drawAllPlatforms() {
 function drawAllEntities() {
   for (let entity of entities) {
     entity.display();
+  }
+}
+
+function drawAllBreakableObjects() {
+  for (let object of brObjects) {
+    object.display();
   }
 }
 
@@ -1123,4 +1390,89 @@ function createStage(x, y, blocksWide, blocksTall) {
 //Create a spike pit based off blockswide
 function createSpikePit(x, y, blocksWide) {
   platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", spikeUp, 16, 32));
+}
+
+function createPlatform(x, y, blocksWide, theTexture) {
+  platforms.push(new Platform(x, y, 24 * blocksWide, 9, true, "blue", theTexture, 24, 9, true));
+}
+
+function createBreakableObject(x, y, blocksWide, blocksTall, health) {
+  brObjects.push(new breakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health))
+}
+
+//Stage setups
+function testStage() {
+
+  //Left island
+  createStage(width / 2 - 600, groundLevel , 10, 30);
+  createStage(width / 2 - 300, groundLevel , 10, 20);
+
+  //Way to right cluster
+  makeTower(width / 2 - 25, groundLevel - 330, 4);
+  
+  //Random stage generator
+  for (let i = 900; i < 10000; i += random(300, 500)) {
+
+    createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
+  }
+
+  //Death block underneath
+  createSpikePit(width/2, groundLevel + 500, 800);
+
+  //Right cluster
+  createStage(width / 2 + 600, groundLevel, 10, 35);
+  createStage(width / 2 + 355, groundLevel , 14, 50);
+  createStage(width / 2 + 800, groundLevel , 14, 50);
+  createSpikePit(width / 2 + 577, groundLevel - 37 * 12, 7 );
+
+  //Main floor
+  createStage(width / 2, groundLevel - 50, 24, 7);
+
+  //Platform
+  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform)
+
+  //Breakable object
+  createBreakableObject(width/2, groundLevel - 168, 2, 2, 1)
+}
+
+function getItemsInArea(x, y, sizeX, sizeY, self) {
+  let items = []
+  let squareLeft = x - sizeX/2
+  let squareRight = x + sizeX/2
+  let squareTop = y - sizeY/2
+  let squareBottom = y + sizeY/2
+
+  for (let entity of entities) {
+    if (entity === self) {
+      continue
+    }
+
+    let top = entity.y - entity.sizeY / 2
+    let bottom = entity.y + entity.sizeY / 2
+    let left = entity.x - entity.sizeX / 2
+    let right = entity.x + entity.sizeX / 2
+    
+    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop 
+
+    if (!isOutside) {
+      items.push(entity)
+    }
+  }
+
+  for (let object of brObjects) {
+    
+
+    let top = object.y - object.sizeY / 2
+    let bottom = object.y + object.sizeY / 2
+    let left = object.x - object.sizeX / 2
+    let right = object.x + object.sizeX / 2
+    
+    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop 
+
+    if (!isOutside) {
+      items.push(object)
+    }
+  }
+
+  return items
 }
