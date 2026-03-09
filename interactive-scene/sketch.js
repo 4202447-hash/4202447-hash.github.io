@@ -12,6 +12,11 @@
 const gravitationalForce = 0.3;
 const frictionalForce = 0.5;
 const footOffset = 2;
+const layer1Speed = 0.1;
+const layer2Speed = 0.2;
+const layer3Speed = 0.3;
+const backgroundY = 200
+
 
 //Important Globals and arrays
 let cameraX = 0;
@@ -23,8 +28,8 @@ let platforms = [];
 let entities = [];
 let brObjects = [];
 let stages;
-let currentStage = 0
-let screenShake = 0
+let currentStage = 0;
+let screenShake = 0;
 
 //Animations and sprites
 let playerIdleSheet;
@@ -43,6 +48,9 @@ let playerDownSlam;
 let deadGrassTexture;
 let belowGrass;
 let backgroundLayer1;
+let backgroundLayer2;
+let backgroundLayer3;
+let backgroundLayerLight;
 let deadGrassPlatformM;
 let deadGrassPlatformL;
 let deadGrassPlatformR;
@@ -73,7 +81,7 @@ function preload() {
   playerSprintSheet = loadImage("Character/sprint.png");
   playerUpwardPunch = loadImage("Character/upPunch.png");
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
-  playerDownSlam = loadImage("Character/down.png")
+  playerDownSlam = loadImage("Character/down.png");
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -97,6 +105,9 @@ function preload() {
 
   //Background
   backgroundLayer1 = loadImage("PropsTextures/bgL1.png");
+  backgroundLayer2 = loadImage("PropsTextures/bgL2.png");
+  backgroundLayer3 = loadImage("PropsTextures/bgL3.png");
+  backgroundLayerLight = loadImage("PropsTextures/bgLLight.png");
 }
 
 //Platform tables
@@ -158,8 +169,8 @@ class Humanoid {
 
     //Stats and equips
     this.currentWeapon = "punch";
-    this.rangeX = 20
-    this.rangeY = 10
+    this.rangeX = 20;
+    this.rangeY = 10;
 
     //Table of non conflict states
     this.states = [
@@ -338,7 +349,7 @@ class Humanoid {
     this.actionState = "rolling";
     this.lastroll = millis();
 
-    this.yVel = 0
+    this.yVel = 0;
 
     if (!this.grounded) {
       this.yVel -= 1;
@@ -378,9 +389,9 @@ class Player extends Humanoid {
     this.lastHit = 0;
     this.lastCheckpointX = y;
     this.lastCheckpointY = x;
-    this.hitItems = []
-    this.alrHit = []
-    this.pressedS = 9999999999
+    this.hitItems = [];
+    this.alrHit = [];
+    this.pressedS = 9999999999;
 
     //Animations
     this.frameWidth = 0;
@@ -402,7 +413,7 @@ class Player extends Humanoid {
     this.sprintingSheet = playerSprintSheet;
     this.punchUp = playerUpwardPunch;
     this.ledgeClimb = playerLedgeSheet;
-    this.downSlam = playerDownSlam
+    this.downSlam = playerDownSlam;
 
     //Input buffering
     this.bufferThreshold = 150;
@@ -615,31 +626,38 @@ class Player extends Humanoid {
     this.handleState();
 
     //If attacking run hitbox chcks
-    let facing = this.directionFacing === "left" ? -1 : 1
+    let facing = this.directionFacing === "left" ? -1 : 1;
 
     if (this.actionState.startsWith(this.currentWeapon)){
       if (this.actionState.includes("Up")) {
-        this.hitItems = getItemsInArea(this.x, this.y - 60, this.rangeX, this.rangeY, this)
+        this.hitItems = getItemsInArea(this.x, this.y - 60, this.rangeX, this.rangeY, this);
       }
 
       else {
-        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this)
+        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this);
       }
     }
 
     if (this.actionState === "downSlam") {
-      this.hitItems = getItemsInArea(this.x, this.y + 40, this.rangeX, this.rangeY, this)
+      this.hitItems = getItemsInArea(this.x, this.y + 40, this.rangeX, this.rangeY, this);
     }
+
+    let pushedBack = false;
 
     if (this.hitItems) {
       for (let item of this.hitItems) {
         if (!this.alrHit.includes(item) && item.active){
-          this.alrHit.push(item)
-          item.onHit()
-          screenShake = 4
+          this.alrHit.push(item);
+          item.onHit();
+          screenShake = 4;
+          if (this.actionState.startsWith(this.currentWeapon) && !pushedBack){
+            this.xVel += this.directionFacing === "right" ? -2 : 2;
+            pushedBack = true
+          }
+
           if (this.actionState === "downSlam") {
-            this.yVel = -8
-            this.actionState = "jumpLaunch"
+            this.yVel = -8;
+            this.actionState = "jumpLaunch";
           }
         }
       }
@@ -774,10 +792,10 @@ class Player extends Humanoid {
       
     }
 
-    else if (keyIsDown(83) && !this.grounded && this.actionState != "downSlam") {
+    else if (keyIsDown(83) && !this.grounded && this.actionState !== "downSlam") {
       this.actionState = "downSlam";
       this.currentHit = 1;
-      this.yVel += 5
+      this.yVel += 5;
     }
 
     else {
@@ -785,7 +803,7 @@ class Player extends Humanoid {
       this.currentHit += 1;
     }
 
-    this.alrHit = []
+    this.alrHit = [];
 
   }
 
@@ -811,7 +829,7 @@ class Platform {
     this.tilesizeX = tileX;
     this.tilesizeY = tileY;
     this.canClimb = canClimb;
-    this.bottomBlock = bottomBlock
+    this.bottomBlock = bottomBlock;
   }
 
   //Display platform with texture or fallback as rectangle
@@ -943,7 +961,7 @@ class Platform {
       itemBottom <= this.top + max(5, item.yVel + 2)
     ) {
 
-      if (this.bottomBlock || (item.phasingBottom === true && item.currentPlatform === this && this.oneWay)) {
+      if (this.bottomBlock || item.phasingBottom === true && item.currentPlatform === this && this.oneWay) {
         return ;
       }
 
@@ -1045,83 +1063,85 @@ class HurtBlock extends Platform{
 //Takes small parts of a given image and shoots them outwards like debris
 class Debris{
   constructor(x, y, ogImg, width, height, broken) {
-    this.y = y + random(-20, 20)
+    this.y = y + random(-20, 20);
 
     //Useless variables only so collision functions dont crash
-    this.actionState = "Debris"
-    this.actionStates = []
-    this.directionFacing = "None"
-    this.lastLedgeClimb = 0
-    this.phasingBottom = false
+    this.actionState = "Debris";
+    this.actionStates = [];
+    this.directionFacing = "None";
+    this.lastLedgeClimb = 0;
+    this.phasingBottom = false;
 
-    this.grounded = false
+    this.grounded = false;
 
     //Which part of the image to take
-    let imgX = floor(random(0, ogImg.width - 20))
-    let imgY = floor(random(0, ogImg.width - 20))
-    this.sizeX = !broken ? floor(random(width/8, width/4)) : floor(random(width/7, width/4))
-    this.sizeY = !broken ? floor(random(height/12, height/6)) : floor(height/8, height/4)
+    let imgX = floor(random(0, ogImg.width - 20));
+    let imgY = floor(random(0, ogImg.width - 20));
+    this.sizeX = !broken ? floor(random(width/8, width/4)) : floor(random(width/7, width/4));
+    this.sizeY = !broken ? floor(random(height/12, height/6)) : floor(height/8, height/4);
 
 
     //Create a new canvas inside the existing canvas so we can rotate, bounce, and move the chunk independently
-    this.newCanvas = createGraphics(this.sizeX, this.sizeY)
+    this.newCanvas = createGraphics(this.sizeX, this.sizeY);
 
     //Takes a chunk out of our existing canvas (the image we are using), and pastes it into the new canvas
-    this.newCanvas.copy(ogImg, imgX, imgY, this.sizeX, this.sizeY, 0, 0, this.sizeX, this.sizeY)
+    this.newCanvas.copy(ogImg, imgX, imgY, this.sizeX, this.sizeY, 0, 0, this.sizeX, this.sizeY);
 
     //The physics we will apply to make it look like debris
-    this.xVel = random(-5, 5)
+    this.xVel = random(-5, 5);
 
     if (broken) {
-      this.x = x
+      this.x = x;
     }
     else {
-      this.x = this.xVel > 0 ? x + width/2 - 10 : x - width/2+ 10
+      this.x = this.xVel > 0 ? x + width/2 - 10 : x - width/2+ 10;
     }
 
-    this.yVel = random(-2, -1)
-    this.angle = random(TWO_PI)
-    this.rotationSpeed = random(-0.1, 0.1)
+    this.yVel = random(-2, -1);
+    this.angle = random(TWO_PI);
+    this.rotationSpeed = random(-0.1, 0.1);
   }
 
   //Update position and apply physics
   update() {
-    this.x += this.xVel
-    this.xVel *= 0.95
-    this.angle += this.rotationSpeed
+    this.x += this.xVel;
+    this.xVel *= 0.95;
+    this.angle += this.rotationSpeed;
     
     if (!this.grounded) {
-      this.yVel += gravitationalForce
+      this.yVel += gravitationalForce;
     }
-    else [
-      this.rotationSpeed = 0
-    ]
+    else {
+      [
+        this.rotationSpeed = 0
+      ];
+    }
 
-    this.grounded = false
-    this.y += this.yVel
+    this.grounded = false;
+    this.y += this.yVel;
   }
 
   //Display new canvas
   display() {
     push();
-    translate(this.x, this.y)
-    rotate(this.angle)
+    translate(this.x, this.y);
+    rotate(this.angle);
 
-    image(this.newCanvas, 0, 0)
+    image(this.newCanvas, 0, 0);
     pop();
   }
 }
 
 class breakableObject {
   constructor(x, y, sizeX, sizeY, mainImg, health) {
-    this.x = x
-    this.y = y
-    this.sizeX = sizeX
-    this.sizeY = sizeY
-    this.img = mainImg
-    this.health = health
-    this.chunks = []
-    this.active = true
+    this.x = x;
+    this.y = y;
+    this.sizeX = sizeX;
+    this.sizeY = sizeY;
+    this.img = mainImg;
+    this.health = health;
+    this.chunks = [];
+    this.active = true;
 
     this.top = this.y - this.sizeY / 2;
     this.bottom = this.y + this.sizeY / 2;
@@ -1132,43 +1152,43 @@ class breakableObject {
 
   onHit() {
     if (!this.active) {
-      return
+      return;
     }
 
-    this.health -= 1
+    this.health -= 1;
 
     if (this.health <= 0) {
 
       for (let i = 0; i < 25; i++) {
-        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, true))
+        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, true));
       }
     }
 
     else {
       for (let i = 0; i < 5; i++) {
-        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, false))
+        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, false));
       }
     }
   }
 
   display() {
     if (this.active) {
-      image(this.img, this.x, this.y, this.sizeX, this.sizeY)
+      image(this.img, this.x, this.y, this.sizeX, this.sizeY);
     }
 
     for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].update()
-      this.chunks[i].display()
+      this.chunks[i].update();
+      this.chunks[i].display();
     }
 
     if (this.health <= 0 ) {
-      this.active = false
+      this.active = false;
     }
   }
 
   checkCollision(item) {
     if (!this.active) {
-      return
+      return;
     }
 
     let itemBottom = item.y + item.sizeY / 2;
@@ -1222,7 +1242,7 @@ class breakableObject {
       ) {
         item.x = this.left - item.sizeX / 2;
         item.xVel = 0;
-        return
+        return;
       }
 
       //If item runs into right of object
@@ -1234,7 +1254,7 @@ class breakableObject {
       ) {
         item.x = this.right + item.sizeX / 2;
         item.xVel = 0;
-        return
+        return;
       }
 
       //If item headbumps object
@@ -1277,9 +1297,9 @@ function setup() {
       spawPointX: width/2,
       spawnPointY: height/2
     }
-  }
+  };
 
-  testStage()
+  testStage();
   
   player = new Player(width / 2, groundLevel - 250);
 
@@ -1290,12 +1310,11 @@ function setup() {
 }
 
 function draw() {
-  scale(1.5);
-
   background(245, 245, 220);
-  //drawBackground()
 
-  let sHoldTime = (player.pressedS > 0) ? millis() - player.pressedS : 0;
+  scale(1.5);
+  drawBackground();
+  let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
 
   player.update();
   applyAllPhysics();
@@ -1303,14 +1322,14 @@ function draw() {
 
   //Follow player with camera
   let targetX = width / 2 - player.x - 250 ;
-  let targetY = height / 2 - player.y 
+  let targetY = height / 2 - player.y; 
 
   if (sHoldTime > 500 && player.grounded) {
     let lookDownShift = 75; 
     targetY -= lookDownShift;
   }
 
-  let currentLerp = (sHoldTime > 500) ? 0.05 : 0.2;
+  let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
 
   cameraX = lerp(cameraX, targetX, 0.4);
   cameraY = lerp(cameraY, targetY, currentLerp);
@@ -1321,12 +1340,12 @@ function draw() {
   let screenShakeY = 0;
   
   if (screenShake > 0.1) {
-    screenShakeX = random(-screenShake, screenShake)
-    screenShakeY = random(-screenShake, screenShake)
-    screenShake *= 0.8
+    screenShakeX = random(-screenShake, screenShake);
+    screenShakeY = random(-screenShake, screenShake);
+    screenShake *= 0.8;
   }
   else {
-    screenShake = 0
+    screenShake = 0;
   }
 
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
@@ -1344,13 +1363,13 @@ function keyPressed() {
   if (key === " ") {
     player.jump();
     player.inputBuffers.jump = millis();
-    player.pressedS = 0
+    player.pressedS = 0;
   }
 
   if (keyCode === SHIFT) {
     player.roll();
     player.inputBuffers.roll = millis();
-    player.pressedS = 0
+    player.pressedS = 0;
   }
 
   if (key === 's' && player.grounded) {
@@ -1361,7 +1380,7 @@ function keyPressed() {
 
 function keyReleased() {
   if (key === 's') {
-    player.pressedS = 0
+    player.pressedS = 0;
   }
 }
 
@@ -1397,7 +1416,7 @@ function checkAllcollisions() {
   for (let platform of platforms) {
     for (let object of brObjects) {
       for (let chunk of object.chunks) {
-        platform.checkcollision(chunk)
+        platform.checkcollision(chunk);
       }
     }
   }
@@ -1435,11 +1454,35 @@ function windowResized() {
 
 //Unused function to draw a parallex background 
 function drawBackground() {
-  let bgX = cameraX * 0.2 % width;
+  let bgX = cameraX * layer1Speed % width;
 
-  image(backgroundLayer1, bgX, 200, width, height);
-  image(backgroundLayer1, bgX + width, 200 , width, height);
-  image(backgroundLayer1, bgX - width, 200 , width, height);
+  image(backgroundLayer1, bgX, backgroundY, width/2, height);
+  image(backgroundLayer1, bgX + width/2, backgroundY , width/2, height);
+  image(backgroundLayer1, bgX + width, backgroundY , width/2, height);
+  image(backgroundLayer1, bgX - width/2, backgroundY , width/2, height);
+  image(backgroundLayer1, bgX - width, backgroundY , width/2, height);
+
+  image(backgroundLayerLight, bgX, backgroundY + 200, width/2, height);
+  image(backgroundLayerLight, bgX + width/2, backgroundY + 200 , width/2, height);
+  image(backgroundLayerLight, bgX + width, backgroundY + 200 , width/2, height);
+  image(backgroundLayerLight, bgX - width/2, backgroundY + 200 , width/2, height);
+  image(backgroundLayerLight, bgX - width, backgroundY + 200 , width/2, height);
+
+  bgX = cameraX * layer2Speed % width;
+  image(backgroundLayer2, bgX, backgroundY, width/2, height);
+  image(backgroundLayer2, bgX + width/2, backgroundY , width/2, height);
+  image(backgroundLayer2, bgX + width, backgroundY , width/2, height);
+  image(backgroundLayer2, bgX - width/2, backgroundY , width/2, height);
+  image(backgroundLayer2, bgX - width, backgroundY , width/2, height);
+
+  bgX = cameraX * layer3Speed % width;
+  image(backgroundLayer3, bgX, backgroundY, width/2, height);
+  image(backgroundLayer3, bgX + width/2, backgroundY , width/2, height);
+  image(backgroundLayer3, bgX + width, backgroundY , width/2, height);
+  image(backgroundLayer3, bgX - width/2, backgroundY , width/2, height);
+  image(backgroundLayer3, bgX - width, backgroundY , width/2, height);
+
+
 }
 
 //Function to create a stage based off blocks wide/tall rather than pixels
@@ -1461,13 +1504,12 @@ function createPlatform(x, y, blocksWide, theTexture) {
 }
 
 function createBreakableObject(x, y, blocksWide, blocksTall, health) {
-  brObjects.push(new breakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health))
+  brObjects.push(new breakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health));
 }
 
 //Stage setups
 function testStage() {
-
-  currentStage = "testStage"
+  currentStage = "testStage";
   //Left island
   createStage(width / 2 - 600, groundLevel , 10, 30);
   createStage(width / 2 - 300, groundLevel , 10, 20);
@@ -1494,52 +1536,56 @@ function testStage() {
   createStage(width / 2, groundLevel - 50, 24, 7);
 
   //Platform
-  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform)
+  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform);
 
   //Breakable object
-  createBreakableObject(width/2, groundLevel - 168, 2, 2, 1)
+  for (let i = width/2; i < 3000; i += 48) {
+    createBreakableObject(i, groundLevel - 168, 2, 2, 1);
+  }
+  
 }
 
 function getItemsInArea(x, y, sizeX, sizeY, self) {
-  let items = []
-  let squareLeft = x - sizeX/2
-  let squareRight = x + sizeX/2
-  let squareTop = y - sizeY/2
-  let squareBottom = y + sizeY/2
+  let items = [];
+  let squareLeft = x - sizeX/2;
+  let squareRight = x + sizeX/2;
+  let squareTop = y - sizeY/2;
+  let squareBottom = y + sizeY/2;
 
   //createPlatform(x, y, 1, deadGrassPlatform)
 
   for (let entity of entities) {
     if (entity === self) {
-      continue
+      continue;
     }
 
-    let top = entity.y - entity.sizeY / 2
-    let bottom = entity.y + entity.sizeY / 2
-    let left = entity.x - entity.sizeX / 2
-    let right = entity.x + entity.sizeX / 2
+    let top = entity.y - entity.sizeY / 2;
+    let bottom = entity.y + entity.sizeY / 2;
+    let left = entity.x - entity.sizeX / 2;
+    let right = entity.x + entity.sizeX / 2;
     
-    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop 
+    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop; 
 
     if (!isOutside) {
-      items.push(entity)
+      items.push(entity);
     }
   }
 
   for (let object of brObjects) {
     
 
-    let top = object.y - object.sizeY / 2
-    let bottom = object.y + object.sizeY / 2
-    let left = object.x - object.sizeX / 2
-    let right = object.x + object.sizeX / 2
+    let top = object.y - object.sizeY / 2;
+    let bottom = object.y + object.sizeY / 2;
+    let left = object.x - object.sizeX / 2;
+    let right = object.x + object.sizeX / 2;
     
-    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop 
+    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop; 
 
     if (!isOutside) {
-      items.push(object)
+      items.push(object);
     }
   }
 
-  return items
+  return items;
 }
+let thing = 0;
