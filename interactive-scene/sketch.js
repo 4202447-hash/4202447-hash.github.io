@@ -22,7 +22,8 @@ let player;
 let platforms = [];
 let entities = [];
 let brObjects = [];
-let stages = [testStage]
+let stages;
+let currentStage = 0
 let screenShake = 0
 
 //Animations and sprites
@@ -36,6 +37,7 @@ let playerPunch3;
 let playerSprintSheet;
 let playerUpwardPunch;
 let playerLedgeSheet;
+let playerDownSlam;
 
 //Props and textures
 let deadGrassTexture;
@@ -71,6 +73,7 @@ function preload() {
   playerSprintSheet = loadImage("Character/sprint.png");
   playerUpwardPunch = loadImage("Character/upPunch.png");
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
+  playerDownSlam = loadImage("Character/down.png")
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -273,7 +276,7 @@ class Humanoid {
     }
 
     //Movement/Velocity related state handling
-    if (!this.grounded && this.yVel > 0.5) {
+    if (!this.grounded && this.yVel > 0.5 && this.actionState !== "downSlam") {
       this.lastActionState = this.actionState;
       this.actionState = "jumpFall";
 
@@ -335,6 +338,8 @@ class Humanoid {
     this.actionState = "rolling";
     this.lastroll = millis();
 
+    this.yVel = 0
+
     if (!this.grounded) {
       this.yVel -= 1;
     }
@@ -375,6 +380,7 @@ class Player extends Humanoid {
     this.lastCheckpointY = x;
     this.hitItems = []
     this.alrHit = []
+    this.pressedS = 9999999999
 
     //Animations
     this.frameWidth = 0;
@@ -396,6 +402,7 @@ class Player extends Humanoid {
     this.sprintingSheet = playerSprintSheet;
     this.punchUp = playerUpwardPunch;
     this.ledgeClimb = playerLedgeSheet;
+    this.downSlam = playerDownSlam
 
     //Input buffering
     this.bufferThreshold = 150;
@@ -559,6 +566,18 @@ class Player extends Humanoid {
         startFrame: 8,
         oneTime: true,
       },
+
+      downSlam: {
+        sheet: this.downSlam,
+        totalFrames: 3,
+        imageWidth: 128,
+        imageHeight: 35,
+        spriteSpeed: 3,
+        yOffset: 26,
+        charHeight: 40,
+        startFrame: 0,
+        shouldLoop: true
+      }
     };
   }
 
@@ -608,12 +627,20 @@ class Player extends Humanoid {
       }
     }
 
+    if (this.actionState === "downSlam") {
+      this.hitItems = getItemsInArea(this.x, this.y + 40, this.rangeX, this.rangeY, this)
+    }
+
     if (this.hitItems) {
       for (let item of this.hitItems) {
         if (!this.alrHit.includes(item) && item.active){
           this.alrHit.push(item)
           item.onHit()
           screenShake = 4
+          if (this.actionState === "downSlam") {
+            this.yVel = -8
+            this.actionState = "jumpLaunch"
+          }
         }
       }
     }
@@ -698,6 +725,11 @@ class Player extends Humanoid {
       drawingContext.shadowColor = color(255,0 ,0);
     }
 
+    if (this.actionState.startsWith("downSlam")) {
+      drawingContext.shadowBlur = 20;
+      drawingContext.shadowColor = color(255,100 ,0);
+    }
+
     image(
       this.currentSheet,
       0,
@@ -741,6 +773,13 @@ class Player extends Humanoid {
       this.currentHit = 1;
       
     }
+
+    else if (keyIsDown(83) && !this.grounded && this.actionState != "downSlam") {
+      this.actionState = "downSlam";
+      this.currentHit = 1;
+      this.yVel += 5
+    }
+
     else {
       this.actionState = this.currentWeapon + str(this.currentHit);
       this.currentHit += 1;
@@ -1233,11 +1272,18 @@ function setup() {
   dirtStage = [dirtStageL, dirtStageM, dirtStageR];
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
 
+  stages = { testStage:
+    {
+      spawPointX: width/2,
+      spawnPointY: height/2
+    }
+  }
+
   testStage()
   
   player = new Player(width / 2, groundLevel - 250);
 
-  otherPlayer = new Player(width / 4, groundLevel - 250);
+  otherPlayer = new Player(stages[currentStage].xPos, stages[currentStage].yPos);
   entities.push(player);
 
   console.log(platforms);
@@ -1249,6 +1295,7 @@ function draw() {
   background(245, 245, 220);
   //drawBackground()
 
+  let sHoldTime = (player.pressedS > 0) ? millis() - player.pressedS : 0;
 
   player.update();
   applyAllPhysics();
@@ -1256,10 +1303,17 @@ function draw() {
 
   //Follow player with camera
   let targetX = width / 2 - player.x - 250 ;
-  let targetY = height / 2 - player.y;
+  let targetY = height / 2 - player.y 
+
+  if (sHoldTime > 500 && player.grounded) {
+    let lookDownShift = 75; 
+    targetY -= lookDownShift;
+  }
+
+  let currentLerp = (sHoldTime > 500) ? 0.05 : 0.2;
 
   cameraX = lerp(cameraX, targetX, 0.4);
-  cameraY = lerp(cameraY, targetY, 0.4);
+  cameraY = lerp(cameraY, targetY, currentLerp);
 
   push();
 
@@ -1290,21 +1344,31 @@ function keyPressed() {
   if (key === " ") {
     player.jump();
     player.inputBuffers.jump = millis();
+    player.pressedS = 0
   }
 
   if (keyCode === SHIFT) {
     player.roll();
     player.inputBuffers.roll = millis();
+    player.pressedS = 0
   }
 
-  if (key === 's') {
+  if (key === 's' && player.grounded) {
     player.phaseCurrentPlatform();
+    player.pressedS = millis();
+  }
+}
+
+function keyReleased() {
+  if (key === 's') {
+    player.pressedS = 0
   }
 }
 
 function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
+  player.pressedS = 0;
 }
 
 //Helper function to draw small tower of oneway collision platforms
@@ -1403,6 +1467,7 @@ function createBreakableObject(x, y, blocksWide, blocksTall, health) {
 //Stage setups
 function testStage() {
 
+  currentStage = "testStage"
   //Left island
   createStage(width / 2 - 600, groundLevel , 10, 30);
   createStage(width / 2 - 300, groundLevel , 10, 20);
@@ -1441,6 +1506,8 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   let squareRight = x + sizeX/2
   let squareTop = y - sizeY/2
   let squareBottom = y + sizeY/2
+
+  //createPlatform(x, y, 1, deadGrassPlatform)
 
   for (let entity of entities) {
     if (entity === self) {
