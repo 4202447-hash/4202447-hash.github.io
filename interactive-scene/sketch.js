@@ -15,12 +15,12 @@ const footOffset = 2;
 const layer1Speed = 0.1;
 const layer2Speed = 0.2;
 const layer3Speed = 0.3;
-const backgroundY = 300
-const cameraBoxWith = 200
+const backgroundY = 300;
+const cameraBoxWith = 200;
 
 
 //Important Globals and arrays
-let cameraX = -250
+let cameraX = -250;
 let cameraY = 0;
 let floorHeight = 48;
 let groundLevel;
@@ -66,6 +66,15 @@ let deadGrassStageM;
 let deadGrassStageR;
 let spikeUp;
 
+//GUI
+let redHeart;
+let blueHeart;
+let greenHeart;
+let yellowHeart;
+let emptyHeart;
+
+let hearts;
+
 //Breakable objects
 let crate;
 
@@ -109,6 +118,13 @@ function preload() {
   backgroundLayer2 = loadImage("PropsTextures/bgL2.png");
   backgroundLayer3 = loadImage("PropsTextures/bgL3.png");
   backgroundLayerLight = loadImage("PropsTextures/bgLLight.png");
+
+  //GUI
+  redHeart = loadImage("GUI/redHeart.png");
+  blueHeart = loadImage("GUI/blueHeart.png");
+  greenHeart = loadImage("GUI/greenHeart.png");
+  yellowHeart = loadImage("GUI/yellowHeart.png");
+  emptyHeart = loadImage("GUI/emptyHeart.png");
 }
 
 //Platform tables
@@ -248,16 +264,7 @@ class Humanoid {
     }
 
     this.y += this.yVel;
-
-    // Apply bounds
-    // let nextX = this.x + this.xVel;
-
-    // if (nextX >= this.sizeX / 2 && nextX <= width - this.sizeX / 2) {
-    //   this.x = nextX;
-    // }
-
-    let nextX = this.x + this.xVel;
-    this.x = nextX;
+    this.x = this.x + this.xVel;
 
     //Apply friction if not rolling, 1/4 in air
     if (this.moveDir === 0 && this.actionState !== "rolling") {
@@ -307,15 +314,21 @@ class Humanoid {
         this.actionState = "idle";
       }
     }
+
+    //If grounded and standing still Idle
     else if (this.grounded && this.xVel === 0) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
     }
+
+    //if grounded and moving and holding shift then sprinting
     else if (this.grounded && abs(this.xVel) > 1) {
       if (keyIsDown(SHIFT) && this.actionState !== "rolling") {
         this.lastActionState = this.actionState;
         this.actionState = "sprinting";
       }
+
+      //If moving running
       else {
         this.lastActionState = this.actionState;
         this.actionState = "running";
@@ -392,7 +405,7 @@ class Player extends Humanoid {
     this.lastCheckpointY = x;
     this.hitItems = [];
     this.alrHit = [];
-    this.pressedS = 9999999999;
+    this.pressedS = 0;
 
     //Animations
     this.frameWidth = 0;
@@ -417,6 +430,8 @@ class Player extends Humanoid {
     this.downSlam = playerDownSlam;
 
     //Input buffering
+
+    //Stores inputs so we can keep trying to run them for 150ms
     this.bufferThreshold = 150;
     this.inputBuffers = {
       punch: 0,
@@ -555,18 +570,6 @@ class Player extends Humanoid {
         oneTime: true,
       },
 
-      // ledgeClimb: {
-      //   sheet: this.ledgeClimb,
-      //   totalFrames: 1,
-      //   imageWidth: 128,
-      //   imageHeight: 39,
-      //   spriteSpeed: 30,
-      //   yOffset: 20,
-      //   charHeight: 39,
-      //   startFrame: 0,
-      //   shouldLoop: false,
-      // },
-
       ledgeClimb: {
         sheet: this.ledgeClimb,
         totalFrames: 6,
@@ -640,12 +643,14 @@ class Player extends Humanoid {
     }
 
     if (this.actionState === "downSlam") {
-      this.hitItems = getItemsInArea(this.x, this.y + 40, this.rangeX, this.rangeY, this);
+      this.hitItems = getItemsInArea(this.x, this.y + 45, this.rangeX, this.rangeY, this);
     }
 
+    //Variable to remember if we have already applied opposite velocity when hitting person
     let pushedBack = false;
 
-    if (this.hitItems) {
+    //Run on hit for things hit and shake screen
+    if (this.hitItems.length) {
       for (let item of this.hitItems) {
         if (!this.alrHit.includes(item) && item.active){
           this.alrHit.push(item);
@@ -653,9 +658,10 @@ class Player extends Humanoid {
           screenShake = 4;
           if (this.actionState.startsWith(this.currentWeapon) && !pushedBack){
             this.xVel += this.directionFacing === "right" ? -2 : 2;
-            pushedBack = true
+            pushedBack = true;
           }
 
+          //Pogos the player up if they destroy an object/hit a entity below them
           if (this.actionState === "downSlam") {
             this.yVel = -8;
             this.actionState = "jumpLaunch";
@@ -665,7 +671,7 @@ class Player extends Humanoid {
     }
   }
 
-  //Check input buffers
+  //Check input buffers (tries to run the input)
   checkInputBuffs() {
     if (millis() - this.inputBuffers.jump < this.bufferThreshold) {
       this.jump();
@@ -729,8 +735,8 @@ class Player extends Humanoid {
       }
     }
 
+    //Vertical offset which adjusts to the different animations (avoid changing)
     let verticalOffset = anim.charHeight * this.imageScale * this.yScale / 2;
-    let aNew = this.currentSheet;
 
     if (millis() - this.lastHitTaken < 150) {
       drawingContext.filter = 'brightness(10) contrast(2)'; 
@@ -795,27 +801,38 @@ class Player extends Humanoid {
       
     }
 
+    //Down Slam
     else if (keyIsDown(83) && !this.grounded && this.actionState !== "downSlam") {
       this.actionState = "downSlam";
       this.currentHit = 1;
       this.yVel += 5;
     }
 
+    //Normal punch
     else {
       this.actionState = this.currentWeapon + str(this.currentHit);
       this.currentHit += 1;
     }
 
+    //Reset things that are already hit
     this.alrHit = [];
 
   }
 
+  //Function which respawns player at last grounded area, should be different from full reset which returns player to last checkpoint
   respawn() {
     console.log(this.lastCheckpointX, this.lastCheckpointY);
     this.x = this.lastCheckpointX;
     this.y = this.lastCheckpointY - 5;
     this.xVel = 0;
     this.yVel = 0;
+  }
+
+  showGUI() {
+    image(redHeart, 30, 30, 32, 32);
+    image(blueHeart, 80, 30, 32, 32);
+    image(yellowHeart, 130, 30, 32, 32);
+    image(greenHeart, 170, 30, 32, 32);
   }
 }
 
@@ -844,15 +861,16 @@ class Platform {
       push(); //save current settings
       imageMode(CORNER); //Return to image mode corner because tiling is too hard for me with center
 
-      
+
       for (let x = 0; x < this.sizeX; x += displasizeYX) {
         for (let y = 0; y < this.sizeY; y += displasizeYY){
 
           let currentImage = this.img;
+
+          //If we are tiling with several images to have corner blocks set current image to appropriate block
           if (Array.isArray(this.img)) {
             currentImage = x === 0 ? this.img[0] : x + displasizeYX >= this.sizeX ? this.img[2] : this.img[1];
           }
-
 
           let dW = Math.min(displasizeYX, this.sizeX - x); 
           let dH = Math.min(displasizeYY, this.sizeY - y);
@@ -874,12 +892,14 @@ class Platform {
       pop(); //Return to old settings
     }
     else{
+      //If no image just make rectangle
       fill(this.color) ;
       rect(this.x, this.y, this.sizeX, this.sizeY);
     }
     
   }
 
+  //Snaps an item to a ledge with a side
   snapToLedge(item, side) {
     this.lastActionState = this.actionState;
     item.actionState = "ledgeClimb";
@@ -887,9 +907,10 @@ class Platform {
     item.yVel = 0;
     item.currentPlatform = this;
 
-
+    //set items yPos to have top quarter in position - an offset
     item.y = this.top + item.sizeY * 0.25 - 4;
 
+    //Stick item to appropriate edge based off side +- offset
     item.x =
       side === "left"
         ? this.left - item.sizeX / 2 + 5
@@ -1283,6 +1304,25 @@ function setup() {
   groundLevel = height - floorHeight;
 
 
+  hearts = [
+    {
+      redHeart,
+      alive: true
+    },
+    {
+      blueHeart,
+      alive: true
+    },
+    {
+      greenHeart,
+      alive: true
+    },
+    {
+      yellowHeart,
+      alive: true
+    }
+  ];
+  
   rectMode(CENTER);
   imageMode(CENTER);
   noSmooth();
@@ -1306,7 +1346,6 @@ function setup() {
   
   player = new Player(width / 2, groundLevel - 250);
 
-  otherPlayer = new Player(stages[currentStage].xPos, stages[currentStage].yPos);
   entities.push(player);
 
   console.log(platforms);
@@ -1317,8 +1356,11 @@ function draw() {
 
   scale(1.5);
   drawBackground();
+
+  //Variable to see how long S has been held
   let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
 
+  //Run all non draw related functions
   player.update();
   applyAllPhysics();
   checkAllcollisions();
@@ -1327,7 +1369,6 @@ function draw() {
   let targetX = width / 2 - player.x - 250 ;
   let targetY = height / 2 - player.y; 
 
-  let changeX = Math.abs(targetX - cameraX)
 
   if (sHoldTime > 500 && player.grounded) {
     let lookDownShift = 75; 
@@ -1336,20 +1377,13 @@ function draw() {
 
   let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
 
-  console.log(changeX)
-
-  if (changeX > cameraBoxWith){
-    cameraX += (targetX > cameraX) ? 3 : -3;
-  }
-
-  if (player.actionState === "ledgeClimb" && changeX > cameraBoxWith) {
-    
-  }
-  
+  //Lerp camera to target
+  cameraX = lerp(cameraX, targetX, 0.1);
   cameraY = lerp(cameraY, targetY, currentLerp);
 
   push();
 
+  //Shake screen at screenShake pixels randomly in any direction
   let screenShakeX = 0;
   let screenShakeY = 0;
   
@@ -1370,6 +1404,8 @@ function draw() {
   drawAllBreakableObjects();
 
   pop();
+
+  player.showGUI();
 }
 
 //Inputs
@@ -1476,11 +1512,14 @@ function drawBackground() {
   image(backgroundLayer1, bgX - width/2, backgroundY , width/2, height);
   image(backgroundLayer1, bgX - width, backgroundY , width/2, height);
 
-  image(backgroundLayerLight, bgX, backgroundY + 200, width/2, height);
-  image(backgroundLayerLight, bgX + width/2, backgroundY + 200 , width/2, height);
-  image(backgroundLayerLight, bgX + width, backgroundY + 200 , width/2, height);
-  image(backgroundLayerLight, bgX - width/2, backgroundY + 200 , width/2, height);
-  image(backgroundLayerLight, bgX - width, backgroundY + 200 , width/2, height);
+  //The aditional offset is because the light is slightly off where I want it
+  let offset = 100;
+
+  image(backgroundLayerLight, bgX, backgroundY + offset, width/2, height);
+  image(backgroundLayerLight, bgX + width/2, backgroundY + offset , width/2, height);
+  image(backgroundLayerLight, bgX + width, backgroundY + offset , width/2, height);
+  image(backgroundLayerLight, bgX - width/2, backgroundY + offset , width/2, height);
+  image(backgroundLayerLight, bgX - width, backgroundY + offset , width/2, height);
 
   bgX = cameraX * layer2Speed % width;
   image(backgroundLayer2, bgX, backgroundY, width/2, height);
