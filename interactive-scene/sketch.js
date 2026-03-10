@@ -15,11 +15,12 @@ const footOffset = 2;
 const layer1Speed = 0.1;
 const layer2Speed = 0.2;
 const layer3Speed = 0.3;
-const backgroundY = 200
+const backgroundY = 300
+const cameraBoxWith = 200
 
 
 //Important Globals and arrays
-let cameraX = 0;
+let cameraX = -250
 let cameraY = 0;
 let floorHeight = 48;
 let groundLevel;
@@ -714,6 +715,8 @@ class Player extends Humanoid {
           this.y -= this.sizeY * 0.7;
 
           let moveForward = 15;
+          
+          
           this.x +=
             this.directionFacing === "left" ? -moveForward : moveForward;
 
@@ -1324,6 +1327,8 @@ function draw() {
   let targetX = width / 2 - player.x - 250 ;
   let targetY = height / 2 - player.y; 
 
+  let changeX = Math.abs(targetX - cameraX)
+
   if (sHoldTime > 500 && player.grounded) {
     let lookDownShift = 75; 
     targetY -= lookDownShift;
@@ -1331,7 +1336,16 @@ function draw() {
 
   let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
 
-  cameraX = lerp(cameraX, targetX, 0.4);
+  console.log(changeX)
+
+  if (changeX > cameraBoxWith){
+    cameraX += (targetX > cameraX) ? 3 : -3;
+  }
+
+  if (player.actionState === "ledgeClimb" && changeX > cameraBoxWith) {
+    
+  }
+  
   cameraY = lerp(cameraY, targetY, currentLerp);
 
   push();
