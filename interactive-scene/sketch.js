@@ -429,8 +429,18 @@ class Player extends Humanoid {
     this.ledgeClimb = playerLedgeSheet;
     this.downSlam = playerDownSlam;
 
-    //Input buffering
+    //Hearts and huds
+    this.redHeartActive = true;
+    this.blueHeartActive = true;
+    this.greenHeartActive = true;
+    this.yellowHeartActive = true;
 
+    this.redBar = 50;
+    this.blueBar = 10;
+    this.greenBar = 80;
+    this.yellowBar = 65;
+
+    //Input buffering
     //Stores inputs so we can keep trying to run them for 150ms
     this.bufferThreshold = 150;
     this.inputBuffers = {
@@ -786,6 +796,8 @@ class Player extends Humanoid {
       return;
     }
 
+    this.redBar = Math.min(this.redBar + 1, 100) ;
+
     //Upwards punch
     if (this.currentHit === 4) {
       this.currentHit = 1;
@@ -829,10 +841,71 @@ class Player extends Humanoid {
   }
 
   showGUI() {
-    image(redHeart, 30, 30, 32, 32);
-    image(blueHeart, 80, 30, 32, 32);
-    image(yellowHeart, 130, 30, 32, 32);
-    image(greenHeart, 170, 30, 32, 32);
+    let startingHeight = 775;
+    let startingWidth = 30;
+    let backgroundBarWidth = 170
+    let barOffset = 90;
+    let healthOffset = 5
+
+    push();
+    drawingContext.shadowBlur = 5;
+    drawingContext.shadowColor = color(0, 0, 0);
+
+    //Red
+    let redWith = map(this.redBar, 0, 100, 0, 180);
+
+    noStroke();
+    fill(220, 0, 0);
+    rect(startingWidth + redWith/2 - healthOffset, height - startingHeight, redWith, 15);
+
+    stroke(0);
+    fill(0);
+    noFill();
+    rect(startingWidth + barOffset, height - startingHeight, backgroundBarWidth, 16);
+
+    image(redHeart, startingWidth, height - startingHeight, 32, 32);
+
+    //Blue
+    let blueWidth = map(this.blueBar, 0, 100, 0, 180);
+
+    noStroke();
+    fill(0, 0, 220);
+    rect(startingWidth + blueWidth/2 - healthOffset, height - startingHeight - 50, blueWidth, 15);
+
+    stroke(0);
+    fill(0);
+    noFill();
+    rect(startingWidth + barOffset, height - startingHeight - 50, backgroundBarWidth, 16);
+
+    image(blueHeart, startingWidth, height - startingHeight - 50, 32, 32);
+
+    //Yellow
+    let yellowWidth = map(this.yellowBar, 0, 100, 0, 180);
+
+    fill(219, 231, 62);
+    rect(startingWidth + yellowWidth/2 - healthOffset, height - startingHeight - 100, yellowWidth, 15);
+
+    stroke(0);
+    fill(0);
+    noFill();
+    rect(startingWidth + barOffset, height - startingHeight - 100, backgroundBarWidth, 16);
+
+    image(yellowHeart, startingWidth, height - startingHeight - 100, 32, 32);
+
+    //Green
+    let greenWidth = map(this.greenBar, 0, 100, 0, 180);
+
+    fill(0, 120, 36);
+    rect(startingWidth + greenWidth/2 - healthOffset, height - startingHeight - 150, greenWidth, 15);
+
+    stroke(0);
+    fill(0);
+    noFill();
+    rect(startingWidth + barOffset, height - startingHeight - 150, backgroundBarWidth, 16);
+
+    image(greenHeart, startingWidth, height - startingHeight - 150, 32, 32);
+
+    pop();
   }
 }
 
@@ -1074,10 +1147,10 @@ class HurtBlock extends Platform{
 
   checkcollision(item) {
     if (super.checkcollision(item)){
-      item.gotHit();
 
       if (item instanceof Player) {
         item.respawn();
+        item.gotHit();
       }
     }
   }
@@ -1302,26 +1375,6 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
 
   groundLevel = height - floorHeight;
-
-
-  hearts = [
-    {
-      redHeart,
-      alive: true
-    },
-    {
-      blueHeart,
-      alive: true
-    },
-    {
-      greenHeart,
-      alive: true
-    },
-    {
-      yellowHeart,
-      alive: true
-    }
-  ];
   
   rectMode(CENTER);
   imageMode(CENTER);
@@ -1612,6 +1665,8 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
       continue;
     }
 
+    console.log(entity);
+
     let top = entity.y - entity.sizeY / 2;
     let bottom = entity.y + entity.sizeY / 2;
     let left = entity.x - entity.sizeX / 2;
@@ -1625,7 +1680,8 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   }
 
   for (let object of brObjects) {
-    
+
+    console.log(object);
 
     let top = object.y - object.sizeY / 2;
     let bottom = object.y + object.sizeY / 2;
