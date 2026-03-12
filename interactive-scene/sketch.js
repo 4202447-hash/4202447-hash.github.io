@@ -44,6 +44,7 @@ let playerSprintSheet;
 let playerUpwardPunch;
 let playerLedgeSheet;
 let playerDownSlam;
+let playerBlock;
 
 //Props and textures
 let deadGrassTexture;
@@ -92,6 +93,7 @@ function preload() {
   playerUpwardPunch = loadImage("Character/upPunch.png");
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
   playerDownSlam = loadImage("Character/down.png");
+  playerBlock = loadImage("Character/block.png");
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -289,10 +291,12 @@ class Humanoid {
     if (
       this.actionState === "rolling" ||
       this.actionState.startsWith("punch") ||
-      this.actionState === "ledgeClimb"
+      this.actionState === "ledgeClimb" ||
+      this.actionState === "blocking"
     ) {
       return;
     }
+    
 
     //Movement/Velocity related state handling
     if (!this.grounded && this.yVel > 0.5 && this.actionState !== "downSlam") {
@@ -428,6 +432,7 @@ class Player extends Humanoid {
     this.punchUp = playerUpwardPunch;
     this.ledgeClimb = playerLedgeSheet;
     this.downSlam = playerDownSlam;
+    this.blockAnim = playerBlock;
 
     //Hearts and huds
     this.redHeartActive = true;
@@ -602,6 +607,18 @@ class Player extends Humanoid {
         charHeight: 40,
         startFrame: 0,
         shouldLoop: true
+      },
+
+      blocking: {
+        sheet: this.blockAnim,
+        totalFrames: 3,
+        imageWidth: 128,
+        imageHeight: 35,
+        spriteSpeed: 6,
+        yOffset: 18,
+        charHeight: 35,
+        startFrame: 0,
+        oneTime: true,
       }
     };
   }
@@ -623,6 +640,10 @@ class Player extends Humanoid {
       this.moveDir = 1;
     }
     else {
+      this.moveDir = 0;
+    }
+
+    if (this.actionState === "blocking") {
       this.moveDir = 0;
     }
 
@@ -679,6 +700,8 @@ class Player extends Humanoid {
         }
       }
     }
+
+    console.log(this.actionState)
   }
 
   //Check input buffers (tries to run the input)
@@ -757,6 +780,11 @@ class Player extends Humanoid {
       drawingContext.shadowColor = color(0, 0, 255);
     }
 
+    if (this.actionState === "blocking") {
+      drawingContext.shadowBlur = 15;
+      drawingContext.shadowColor = color(240,230,140);
+    }
+
     if (this.actionState.startsWith("punch")) {
       drawingContext.shadowBlur = 20;
       drawingContext.shadowColor = color(255,0 ,0);
@@ -831,6 +859,12 @@ class Player extends Humanoid {
 
   }
 
+  //Function to block
+  block() {
+    this.lastActionState === this.actionState;
+    this.actionState = "blocking";
+  }
+
   //Function which respawns player at last grounded area, should be different from full reset which returns player to last checkpoint
   respawn() {
     console.log(this.lastCheckpointX, this.lastCheckpointY);
@@ -843,9 +877,9 @@ class Player extends Humanoid {
   showGUI() {
     let startingHeight = 775;
     let startingWidth = 30;
-    let backgroundBarWidth = 170
+    let backgroundBarWidth = 170;
     let barOffset = 90;
-    let healthOffset = 5
+    let healthOffset = 5;
 
     push();
     drawingContext.shadowBlur = 5;
@@ -1013,7 +1047,6 @@ class Platform {
       abs(itemLeft - this.right) < 5 &&
       abs(handY - this.top) < 15 &&
       item.directionFacing === "left" &&
-      item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 500 &&
       !item.grounded && this.canClimb
@@ -1034,7 +1067,6 @@ class Platform {
       abs(itemRight - this.left) < 5 &&
       abs(handY - this.top) < 15 &&
       item.directionFacing === "right" &&
-      item.actionState !== "rolling" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 500 &&
       !item.grounded && this.canClimb
@@ -1479,6 +1511,10 @@ function keyPressed() {
     player.phaseCurrentPlatform();
     player.pressedS = millis();
   }
+
+  if (key === "f") {
+    player.block();
+  }
 }
 
 function keyReleased() {
@@ -1665,8 +1701,6 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
       continue;
     }
 
-    console.log(entity);
-
     let top = entity.y - entity.sizeY / 2;
     let bottom = entity.y + entity.sizeY / 2;
     let left = entity.x - entity.sizeX / 2;
@@ -1681,7 +1715,6 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
 
   for (let object of brObjects) {
 
-    console.log(object);
 
     let top = object.y - object.sizeY / 2;
     let bottom = object.y + object.sizeY / 2;
@@ -1697,4 +1730,3 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
 
   return items;
 }
-let thing = 0;
