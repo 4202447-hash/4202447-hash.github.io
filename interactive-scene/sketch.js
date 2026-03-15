@@ -28,9 +28,15 @@ let player;
 let platforms = [];
 let entities = [];
 let brObjects = [];
+let gates = [];
 let stages;
 let currentStage = 0;
 let screenShake = 0;
+
+//Variables specific for certain functions to run
+let fadeAmount = 0
+let fade = "none"
+let fadeRate = 5
 
 //Animations and sprites
 let playerIdleSheet;
@@ -968,7 +974,6 @@ class Platform {
       push(); //save current settings
       imageMode(CORNER); //Return to image mode corner because tiling is too hard for me with center
 
-
       for (let x = 0; x < this.sizeX; x += displasizeYX) {
         for (let y = 0; y < this.sizeY; y += displasizeYY){
 
@@ -984,7 +989,7 @@ class Platform {
           
           let sourceW = map(dW, 0, displasizeYX, 0, currentImage.width);
           let sourceH = map(dH, 0, displasizeYY, 0, currentImage.height);
-
+          
           image(
             currentImage,
             this.x - this.sizeX / 2 + x,  //Since we are on image mode center we need to re,
@@ -1031,8 +1036,7 @@ class Platform {
     let itemLeft = item.x - item.sizeX / 2;
     let itemRight = item.x + item.sizeX / 2;
     let itemTop = item.y - item.sizeY / 2;
-    let handY = item.y - item.sizeY / 4;
-    let headY = item.y - item.sizeY / 2;
+    let handY = (item.y - item.sizeY / 4) - 1;
     let itemHit = false;
 
     this.top = this.y - this.sizeY / 2;
@@ -1124,6 +1128,7 @@ class Platform {
       }
 
       item.grounded = true;
+      return true
     }
 
     if (
@@ -1339,11 +1344,6 @@ class breakableObject {
         item.phasingBottom = false;
       }
 
-      if (!(this instanceof HurtBlock)) {
-        item.lastCheckpointX = item.x;
-        item.lastCheckpointY = item.y;
-      }
-
       
       item.currentPlatform = this;
       item.y = this.top - item.sizeY / 2;
@@ -1395,9 +1395,92 @@ class breakableObject {
         itemTop >= this.top
       ) {
         item.y = this.bottom + item.sizeY / 2;
-        console.log("hit two way platform");
         item.yVel = 0;
       }
+    }
+  }
+}
+
+class Gate {
+  constructor(x, y, from, to, sizeX, sizeY, toX, toY) {
+    this.x = x
+    this.y = y
+    this.from = from
+    this.to = to
+    this.toX = toX
+    this.toY = toY
+    this.sizeX = sizeX;
+    this.sizeY = sizeY;
+
+    this.top = this.y - this.sizeY / 2;
+    this.bottom = this.y + this.sizeY / 2;
+    this.left = this.x - this.sizeX / 2;
+    this.right = this.x + this.sizeX / 2;
+  }
+
+  touched(){
+    let item = player
+    let itemBottom = item.y + item.sizeY / 2;
+    let itemLeft = item.x - item.sizeX / 2;
+    let itemRight = item.x + item.sizeX / 2;
+    let itemTop = item.y - item.sizeY / 2;
+
+    if (
+      itemRight > this.left  &&
+      itemLeft < this.right &&
+      itemBottom >= this.top &&
+      itemBottom <= this.top + max(5, item.yVel + 2)
+    ) {
+      return true
+    }
+
+    if (
+      itemBottom > this.top + footOffset &&
+      itemTop < this.bottom - footOffset
+    ) {
+      //If item runs into left of object
+      if (
+        item.xVel >= 0 &&
+        itemRight > this.left &&
+        itemLeft < this.left &&
+        item.xVel > 0
+      ) {
+        return true;
+      }
+
+      //If item runs into right of object
+      if (
+        item.xVel <= 0 &&
+        itemLeft < this.right &&
+        itemRight > this.right &&
+        item.xVel < 0
+      ) {
+        return true;
+      }
+
+      //If item headbumps object
+      if (
+        !this.oneWay &&
+        itemRight > this.left &&
+        itemLeft < this.right &&
+        itemTop <= this.bottom &&
+        itemTop >= this.top
+      ) {
+        return true
+      }
+    }
+  }
+
+  isTouched() {
+    if (this.touched()) {
+      fade = "out"
+      setTimeout(() => {
+      clearStage()
+      console.log(this.to)
+      window[this.to]()
+      player.x = this.toX
+      player.y = this.toY}, 
+      1000)
     }
   }
 }
@@ -1427,10 +1510,9 @@ function setup() {
     }
   };
 
-  testStage();
-  
   player = new Player(width / 2, groundLevel - 250);
-
+  stage1();
+  
   entities.push(player);
 
   console.log(platforms);
@@ -1439,7 +1521,7 @@ function setup() {
 function draw() {
   background(245, 245, 220);
 
-  scale(1.5);
+  scale(1.7);
   drawBackground();
 
   //Variable to see how long S has been held
@@ -1452,7 +1534,7 @@ function draw() {
 
   //Follow player with camera
   let targetX = width / 2 - player.x - 250 ;
-  let targetY = height / 2 - player.y; 
+  let targetY = height / 2 - player.y - 50; 
 
 
   if (sHoldTime > 500 && player.grounded) {
@@ -1462,7 +1544,7 @@ function draw() {
 
   let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
 
-  //Lerp camera to target
+  //Lerp camera to target ONLY if we are not in the process of fading the screen black 
   cameraX = lerp(cameraX, targetX, 0.1);
   cameraY = lerp(cameraY, targetY, currentLerp);
 
@@ -1484,13 +1566,15 @@ function draw() {
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
   //Draw
-  drawAllPlatforms();
   drawAllEntities();
+  drawAllPlatforms();
   drawAllBreakableObjects();
-
+  checkGates();
   pop();
 
   player.showGUI();
+
+  handleFade();
 }
 
 //Inputs
@@ -1567,6 +1651,12 @@ function drawAllPlatforms() {
   }
 }
 
+function checkGates() {
+  for (let gate of gates) {
+    gate.isTouched();
+  }
+}
+
 function drawAllEntities() {
   for (let entity of entities) {
     entity.display();
@@ -1602,7 +1692,7 @@ function drawBackground() {
   image(backgroundLayer1, bgX - width, backgroundY , width/2, height);
 
   //The aditional offset is because the light is slightly off where I want it
-  let offset = 100;
+  let offset = height * 0.04;
 
   image(backgroundLayerLight, bgX, backgroundY + offset, width/2, height);
   image(backgroundLayerLight, bgX + width/2, backgroundY + offset , width/2, height);
@@ -1641,52 +1731,17 @@ function createSpikePit(x, y, blocksWide) {
   platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", spikeUp, 16, 32));
 }
 
+//Creates platform
 function createPlatform(x, y, blocksWide, theTexture) {
   platforms.push(new Platform(x, y, 24 * blocksWide, 9, true, "blue", theTexture, 24, 9, true));
 }
 
+//Creates breakable object
 function createBreakableObject(x, y, blocksWide, blocksTall, health) {
   brObjects.push(new breakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health));
 }
 
-//Stage setups
-function testStage() {
-  currentStage = "testStage";
-  //Left island
-  createStage(width / 2 - 600, groundLevel , 10, 30);
-  createStage(width / 2 - 300, groundLevel , 10, 20);
-
-  //Way to right cluster
-  makeTower(width / 2 - 25, groundLevel - 330, 4);
-  
-  //Random stage generator
-  for (let i = 900; i < 10000; i += random(300, 500)) {
-
-    createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
-  }
-
-  //Death block underneath
-  createSpikePit(width/2, groundLevel + 500, 800);
-
-  //Right cluster
-  createStage(width / 2 + 600, groundLevel, 10, 35);
-  createStage(width / 2 + 355, groundLevel , 14, 50);
-  createStage(width / 2 + 800, groundLevel , 14, 50);
-  createSpikePit(width / 2 + 577, groundLevel - 37 * 12, 7 );
-
-  //Main floor
-  createStage(width / 2, groundLevel - 50, 24, 7);
-
-  //Platform
-  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform);
-
-  //Breakable object
-  for (let i = width/2; i < 3000; i += 48) {
-    createBreakableObject(i, groundLevel - 168, 2, 2, 1);
-  }
-  
-}
-
+//Gets item in an area (for a hitbox type function)
 function getItemsInArea(x, y, sizeX, sizeY, self) {
   let items = [];
   let squareLeft = x - sizeX/2;
@@ -1729,4 +1784,115 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   }
 
   return items;
+}
+
+//Clears all entities and platforms other then players
+function clearStage() {
+  entities = [player]
+  platforms =  []
+  brObjects = []
+}
+
+function handleFade() {
+  if (fade === "out") {
+    fadeAmount += fadeRate
+    if (fadeAmount >= 255) {
+      fade = "in"
+    }
+  }
+  else if (fade === "in") {
+    fadeAmount -= fadeRate
+    if (fadeAmount <= 0) {
+      fade = "none"
+    }
+  }
+
+  //Draw the rectangle for the fade
+  if (fadeAmount > 0) {
+    push();
+    fill(0, fadeAmount)
+    noStroke();
+    rect(width/2, height/2, width, height)
+    pop();
+  }
+}
+
+//Stage setups
+function testStage() {
+  currentStage = "testStage";
+  //Left island
+  createStage(width / 2 - 600, groundLevel , 10, 30);
+  createStage(width / 2 - 300, groundLevel , 10, 20);
+
+  //Way to right cluster
+  makeTower(width / 2 - 25, groundLevel - 330, 4);
+  
+  //Random stage generator
+  for (let i = 900; i < 10000; i += random(300, 500)) {
+
+    createStage(width / 2 - i, groundLevel - random(150, 200), 12, random(10, 16));
+  }
+
+  //Death block underneath
+  createSpikePit(width/2, groundLevel + 500, 800);
+
+  //Right cluster
+  createStage(width / 2 + 600, groundLevel, 10, 35);
+  createStage(width / 2 + 355, groundLevel , 14, 50);
+  createStage(width / 2 + 800, groundLevel , 14, 50);
+  createSpikePit(width / 2 + 577, groundLevel - 37 * 12, 7 );
+
+  //Main floor
+  createStage(width / 2, groundLevel - 50, 24, 7);
+
+  //Platform
+  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform);
+
+  //Breakable object
+  for (let i = width/2; i < 3000; i += 48) {
+    createBreakableObject(i, groundLevel - 168, 2, 2, 1);
+  }
+  
+}
+
+
+function stage1() {
+  currentStage = "stage1";
+
+  //Death block underneath
+  createSpikePit(width/2, groundLevel + 100, 242);
+
+  //Right cluster
+  createStage(width / 2 + 355, groundLevel , 20, 10);
+  createStage(width / 2 + 890, groundLevel , 12, 16);
+  createStage(width / 2 + 1400, groundLevel , 12, 16);
+  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 80);
+  createStage(width / 2 + 2200, groundLevel + 12 * 64 , 12, 80);
+ 
+  //Gate to stage2
+  gates.push(new Gate(width / 2 + 2000, groundLevel + 250, "stage1", "stage2", 125, 10, width/2, height/2))
+
+
+  //Right wall
+  createStage(width / 2 + 2300, groundLevel + 12 * 64 , 12, 95);
+  createStage(width / 2 + 2400, groundLevel + 12 * 64 , 24, 100);
+  createStage(width / 2 + 2450, groundLevel + 12 * 64 , 12, 105);
+
+  //Spawn floor
+  createStage(width / 2 - 250, groundLevel - 50, 4, 6);
+  createStage(width / 2 - 100, groundLevel + 150, 34, 20);
+
+  //Left wall/Barrier
+  createStage(width / 2 - 700, groundLevel, 10, 50);
+  createStage(width / 2 - 450, groundLevel, 10, 40);
+  createStage(width / 2 - 600, groundLevel, 10, 35);
+  createStage(width / 2 - 800, groundLevel, 10, 30);
+  createStage(width / 2 - 400, groundLevel, 10, 32);
+
+  //Platform
+  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform);
+}
+
+function stage2() {
+
 }
