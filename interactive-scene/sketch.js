@@ -34,9 +34,9 @@ let currentStage = 0;
 let screenShake = 0;
 
 //Variables specific for certain functions to run
-let fadeAmount = 0
-let fade = "none"
-let fadeRate = 5
+let fadeAmount = 0;
+let fade = "none";
+let fadeRate = 10;
 
 //Animations and sprites
 let playerIdleSheet;
@@ -65,6 +65,9 @@ let deadGrassPlatformR;
 let stonePlatformL;
 let stonePlatformR;
 let stonePlatformM;
+let stoneStageL;
+let stoneStageM;
+let stoneStageR;
 let dirtStageL;
 let dirtStageM;
 let dirtStageR;
@@ -117,6 +120,9 @@ function preload() {
   deadGrassStageM = loadImage("PropsTextures/DGS.png");
   deadGrassStageR = loadImage("PropsTextures/DGSR.png");
   spikeUp = loadImage("PropsTextures/spikeUp.png");
+  stoneStageL = loadImage("PropsTextures/stoneStageLeft.png");
+  stoneStageR = loadImage("PropsTextures/stoneStageRight.png");
+  stoneStageM = loadImage("PropsTextures/stoneStageMiddle.png");
 
   //Breakable objects
   crate = loadImage("BreakableObjects/Crate.png");
@@ -140,6 +146,7 @@ let deadGrassPlatform;
 let stonePlatform;
 let dirtStage;
 let deadGrassStage;
+let stoneStage;
 
 //Humanoid class which includes anything all player/playerlike entities
 class Humanoid {
@@ -194,7 +201,7 @@ class Humanoid {
 
     //Stats and equips
     this.currentWeapon = "punch";
-    this.rangeX = 20;
+    this.rangeX = 25;
     this.rangeY = 10;
 
     //Table of non conflict states
@@ -707,7 +714,7 @@ class Player extends Humanoid {
       }
     }
 
-    console.log(this.actionState)
+    console.log(this.actionState);
   }
 
   //Check input buffers (tries to run the input)
@@ -951,7 +958,7 @@ class Player extends Humanoid {
 
 //Platform class
 class Platform {
-  constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock) {
+  constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock, cantCollide) {
     this.x = xPos;
     this.y = yPos;
     this.sizeX = sizeX;
@@ -963,6 +970,7 @@ class Platform {
     this.tilesizeY = tileY;
     this.canClimb = canClimb;
     this.bottomBlock = bottomBlock;
+    this.cantCollide = cantCollide;
   }
 
   //Display platform with texture or fallback as rectangle
@@ -1032,11 +1040,15 @@ class Platform {
 
   //Check collisions with given item
   checkcollision(item) {
+    if (this.cantCollide) {
+      return;
+    }
+
     let itemBottom = item.y + item.sizeY / 2;
     let itemLeft = item.x - item.sizeX / 2;
     let itemRight = item.x + item.sizeX / 2;
     let itemTop = item.y - item.sizeY / 2;
-    let handY = (item.y - item.sizeY / 4) - 1;
+    let handY = item.y - item.sizeY / 4 - 1;
     let itemHit = false;
 
     this.top = this.y - this.sizeY / 2;
@@ -1128,7 +1140,7 @@ class Platform {
       }
 
       item.grounded = true;
-      return true
+      return true;
     }
 
     if (
@@ -1231,7 +1243,7 @@ class Debris{
       this.x = this.xVel > 0 ? x + width/2 - 10 : x - width/2+ 10;
     }
 
-    this.yVel = random(-2, -1);
+    this.yVel = random(-5, -4);
     this.angle = random(TWO_PI);
     this.rotationSpeed = random(-0.1, 0.1);
   }
@@ -1403,12 +1415,12 @@ class breakableObject {
 
 class Gate {
   constructor(x, y, from, to, sizeX, sizeY, toX, toY) {
-    this.x = x
-    this.y = y
-    this.from = from
-    this.to = to
-    this.toX = toX
-    this.toY = toY
+    this.x = x;
+    this.y = y;
+    this.from = from;
+    this.to = to;
+    this.toX = toX;
+    this.toY = toY;
     this.sizeX = sizeX;
     this.sizeY = sizeY;
 
@@ -1419,7 +1431,7 @@ class Gate {
   }
 
   touched(){
-    let item = player
+    let item = player;
     let itemBottom = item.y + item.sizeY / 2;
     let itemLeft = item.x - item.sizeX / 2;
     let itemRight = item.x + item.sizeX / 2;
@@ -1431,7 +1443,7 @@ class Gate {
       itemBottom >= this.top &&
       itemBottom <= this.top + max(5, item.yVel + 2)
     ) {
-      return true
+      return true;
     }
 
     if (
@@ -1466,21 +1478,23 @@ class Gate {
         itemTop <= this.bottom &&
         itemTop >= this.top
       ) {
-        return true
+        return true;
       }
     }
   }
 
   isTouched() {
     if (this.touched()) {
-      fade = "out"
+      fade = "out";
       setTimeout(() => {
-      clearStage()
-      console.log(this.to)
-      window[this.to]()
-      player.x = this.toX
-      player.y = this.toY}, 
-      1000)
+        player.yVel = 0;
+        clearStage();
+        console.log(this.to);
+        window[this.to]();
+        player.x = this.toX;
+        player.y = this.toY;
+      }, 
+      500);
     }
   }
 }
@@ -1502,6 +1516,7 @@ function setup() {
   stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR];
   dirtStage = [dirtStageL, dirtStageM, dirtStageR];
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
+  stoneStage = [stoneStageL, stoneStageM, stoneStageR];
 
   stages = { testStage:
     {
@@ -1510,7 +1525,7 @@ function setup() {
     }
   };
 
-  player = new Player(width / 2, groundLevel - 250);
+  player = new Player(width / 2 + 2000, groundLevel - 250);
   stage1();
   
   entities.push(player);
@@ -1566,8 +1581,8 @@ function draw() {
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
   //Draw
-  drawAllEntities();
   drawAllPlatforms();
+  drawAllEntities();
   drawAllBreakableObjects();
   checkGates();
   pop();
@@ -1718,12 +1733,16 @@ function drawBackground() {
 }
 
 //Function to create a stage based off blocks wide/tall rather than pixels
-function createStage(x, y, blocksWide, blocksTall) {
+function createStage(x, y, blocksWide, blocksTall, cantCollide, stage) {
   let dirtH = 24 * (blocksTall - 1);
   let grassH = 24; 
 
-  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, false, true));
-  platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", deadGrassStage, 48, 48, true)); 
+  if (!stage) {
+    stage = deadGrassStage;
+  }
+
+  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, true, true, cantCollide));
+  platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", stage, 48, 48, true, false, cantCollide)); 
 }
 
 //Create a spike pit based off blockswide
@@ -1788,31 +1807,31 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
 
 //Clears all entities and platforms other then players
 function clearStage() {
-  entities = [player]
-  platforms =  []
-  brObjects = []
+  entities = [player];
+  platforms =  [];
+  brObjects = [];
 }
 
 function handleFade() {
   if (fade === "out") {
-    fadeAmount += fadeRate
+    fadeAmount += fadeRate;
     if (fadeAmount >= 255) {
-      fade = "in"
+      fade = "in";
     }
   }
   else if (fade === "in") {
-    fadeAmount -= fadeRate
+    fadeAmount -= fadeRate;
     if (fadeAmount <= 0) {
-      fade = "none"
+      fade = "none";
     }
   }
 
   //Draw the rectangle for the fade
   if (fadeAmount > 0) {
     push();
-    fill(0, fadeAmount)
+    fill(0, fadeAmount);
     noStroke();
-    rect(width/2, height/2, width, height)
+    rect(width/2, height/2, width, height);
     pop();
   }
 }
@@ -1867,10 +1886,12 @@ function stage1() {
   createStage(width / 2 + 890, groundLevel , 12, 16);
   createStage(width / 2 + 1400, groundLevel , 12, 16);
   createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 80);
-  createStage(width / 2 + 2200, groundLevel + 12 * 64 , 12, 80);
+  createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80);
  
-  //Gate to stage2
-  gates.push(new Gate(width / 2 + 2000, groundLevel + 250, "stage1", "stage2", 125, 10, width/2, height/2))
+  //Gate to stage2 along with barrier in the way
+  brObjects.push(new breakableObject(width/2 + 1965, groundLevel - 175, 48, 48, crate, 3));
+  brObjects.push(new breakableObject(width/2 + 2012, groundLevel - 175, 48, 48, crate, 3));
+  gates.push(new Gate(width / 2 + 2000, groundLevel + 250, "stage1", "stage2", 125, 10, width/2 + 2000, groundLevel + 400));
 
 
   //Right wall
@@ -1894,5 +1915,22 @@ function stage1() {
 }
 
 function stage2() {
+  //Hillstone type backdrop
+  createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80, true);
 
+  //Stage bumps
+  createStage(width / 2 + 1950, groundLevel + 800, 6, 6);
+
+  //Floor that you land on
+  createStage(width / 2 + 2200, groundLevel + 1000, 34, 20);
+  
+  //Pillars that surround you as you drop
+  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 80, false, stoneStage);
+  createStage(width / 2 + 1500, groundLevel + 12 * 64 , 16, 80, false, stoneStage);
+  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 8, 80, false, stoneStage);
+
+  //Background rock hills for effect
+  createStage(width / 2 + 1200, groundLevel + 12 * 64 , 26, 40, false, stoneStage);
+  createStage(width / 2 + 1700, groundLevel + 12 * 64 , 10, 15, false, stoneStage);
+  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 6, 35, false, stoneStage);
 }
