@@ -111,12 +111,12 @@ function preload() {
   playerBlock = loadImage("Character/block.png");
 
   //Mushroom animations
-  mushroomAttack = loadImage("Mushroom/Mushroom-Attack.png")
-  mushroomDie = loadImage("Mushroom/Mushroom-Die.png")
-  mushroomIdle = loadImage("Mushroom/Mushroom-Idle.png")
-  mushroomRun = loadImage("Mushroom/Mushroom-Run.png")
-  mushroomStun = loadImage("Mushroom/Mushroom-Stun.png")
-  mushroomGotHit = loadImage("Mushroom/Mushroom-Hit.png")
+  mushroomAttack = loadImage("Mushroom/Mushroom-Attack.png");
+  mushroomDie = loadImage("Mushroom/Mushroom-Die.png");
+  mushroomIdle = loadImage("Mushroom/Mushroom-Idle.png");
+  mushroomRun = loadImage("Mushroom/Mushroom-Run.png");
+  mushroomStun = loadImage("Mushroom/Mushroom-Stun.png");
+  mushroomGotHit = loadImage("Mushroom/Mushroom-Hit.png");
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -671,7 +671,7 @@ class Player extends Humanoid {
       this.moveDir = 0;
     }
 
-    if (this.actionState === "blocking") {
+    if (this.actionState === "blocking" || millis() - this.lastHitTaken < 500) {
       this.moveDir = 0;
     }
 
@@ -873,7 +873,7 @@ class Player extends Humanoid {
     else if (keyIsDown(83) && !this.grounded && this.actionState !== "downSlam") {
       this.actionState = "downSlam";
       this.currentHit = 1;
-      this.yVel = Math.max(5, this.yVel + 5)
+      this.yVel = Math.max(5, this.yVel + 5);
     }
 
     //Normal punch
@@ -976,27 +976,32 @@ class Mushroom extends Humanoid {
     super(x, y);
 
     //Settings
-    this.imageScale = 1.5
-    this.sizeY = 27 * this.imageScale
-    this.sizeX = 20 * this.imageScale 
-    this.active = true
+    this.imageScale = 1.5;
+    this.sizeY = 27 * this.imageScale;
+    this.sizeX = 20 * this.imageScale; 
+    this.active = true;
 
     //Variables specific to entity for enemy AI
     this.startPos = startPos;
     this.endPos = endPos;
-    this.hasTarget = false
+    this.hasTarget = false;
+    this.hitItems = [];
+
+    this.moveDir = -1;
+
 
     //Animations
     this.frameWidth = 0;
     this.frameHeight = 0;
     this.currentSheet = 0;
 
-    this.hit = mushroomAttack
-    this.die = mushroomDie
-    this.stunned = mushroomStun
-    this.idle = mushroomIdle
-    this.run = mushroomRun
-    this.gotHit = mushroomGotHit
+    this.hit = mushroomAttack;
+    this.die = mushroomDie;
+    this.stunned = mushroomStun;
+    this.idle = mushroomIdle;
+    this.run = mushroomRun;
+    this.gotHit = mushroomGotHit;
+
     this.sprites = {
       idle: {
         sheet: this.idle,
@@ -1012,14 +1017,14 @@ class Mushroom extends Humanoid {
 
       landing: {
         sheet: this.idle,
-        totalFrames: 7,
+        totalFrames: 1,
         imageWidth: 80,
         imageHeight: 64,
-        spriteSpeed: 6,
+        spriteSpeed: 1,
         yOffset: 0,
         charHeight: 64,
         startFrame: 0,
-        shouldLoop: true,
+        oneTime: true
       },
 
       attack: {
@@ -1045,11 +1050,23 @@ class Mushroom extends Humanoid {
         startFrame: 0,
         oneTime: true,
       },
-    }
+
+      running: {
+        sheet: this.run,
+        totalFrames: 8,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 5,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+        loop: true
+      },
+    };
   }
 
   display() {
-     console.log(this.actionState)
+    console.log(this.actionState);
     //Identify current anim and define variables
     let anim = this.sprites[this.actionState];
 
@@ -1063,7 +1080,7 @@ class Mushroom extends Humanoid {
     push();
     translate(this.x, this.y);
 
-    if (this.directionFacing === "left") {
+    if (this.directionFacing === "right") {
       scale(-1, 1); // Flip horizontally
     }
 
@@ -1109,7 +1126,29 @@ class Mushroom extends Humanoid {
     pop();
   }
 
+  handleState() {
+    //Skip if currently in an action state
+    if (
+      this.actionState === "attack"
+    ) {
+      return;
+    }
+    
+    if (abs(this.xVel) > 0) {
+      this.actionState === "running" ;
+    }
+  }
+
   update() {
+    this.handleState();
+
+    if (this.moveDir === -1) {
+      this.xVel = -2;
+    }
+    else if (this.moveDir === 1) {
+      this.xVel = 2;
+    }
+
     //Reset animation frame
     if (this.actionState !== this.lastActionState) {
       this.currentFrame = 0;
@@ -1143,10 +1182,103 @@ class Mushroom extends Humanoid {
   }
 
   onHit() {
-    this.currentFrame = 0
-    this.actionState = "gotHit"
+    this.currentFrame = 0;
+    this.actionState = "gotHit";
 
-    this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3
+    this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3;
+  }
+
+  checkCollision(item) {
+    if (!this.active) {
+      return;
+    }
+
+    //For collisions
+    this.top = this.y - this.sizeY / 2;
+    this.bottom = this.y + this.sizeY / 2;
+    this.left = this.x - this.sizeX / 2;
+    this.right = this.x + this.sizeX / 2;
+
+    let itemBottom = item.y + item.sizeY / 2;
+    let itemLeft = item.x - item.sizeX / 2;
+    let itemRight = item.x + item.sizeX / 2;
+    let itemTop = item.y - item.sizeY / 2;
+
+    if (
+      itemRight > this.left  &&
+      itemLeft < this.right &&
+      itemBottom >= this.top &&
+      itemBottom <= this.top + max(5, item.yVel + 2)
+    ) {
+      return true;
+    }
+
+    if (
+      itemBottom > this.top + footOffset &&
+      itemTop < this.bottom - footOffset
+    ) {
+      //If item runs into left of object
+      if (
+        item.xVel >= 0 &&
+        itemRight > this.left &&
+        itemLeft < this.left &&
+        item.xVel > 0
+      ) {
+        return true;
+      }
+
+      //If item runs into right of object
+      if (
+        item.xVel <= 0 &&
+        itemLeft < this.right &&
+        itemRight > this.right &&
+        item.xVel < 0
+      ) {
+        return true;
+      }
+
+      //If item headbumps object
+      if (
+        !this.oneWay &&
+        itemRight > this.left &&
+        itemLeft < this.right &&
+        itemTop <= this.bottom &&
+        itemTop >= this.top
+      ) {
+        return true;
+      }
+    }
+  }
+
+  applyHit() {
+    if (this.checkCollision(player)) {
+      if (millis() - player.lastHitTaken < 150) {
+        return;
+      }
+
+      player.gotHit();
+
+      if (this.x < player.x) {
+        if (!player.grounded) {
+          player.xVel = 5;
+        }
+        else {
+          player.xVel = 6;
+        }
+      }
+
+      else {
+        if (!player.grounded) {
+          player.xVel = -5;
+        }
+        else {
+          player.xVel = -6;
+        }
+      }
+
+      player.yVel = player.grounded ? -3 : -5; 
+      screenShake = 8;
+    }
   }
 }
 
@@ -1216,7 +1348,7 @@ class Platform {
   //Snaps an item to a ledge with a side
   snapToLedge(item, side) {
     if (item instanceof Mushroom) {
-      return
+      return;
     }
     
     this.lastActionState = this.actionState;
@@ -1272,7 +1404,6 @@ class Platform {
       }
 
       this.snapToLedge(item, "right");
-      console.log("Grabbed ledge");
     }
 
     //Left
@@ -1741,7 +1872,7 @@ function draw() {
   let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
 
   //Run all non draw related functions
-  player.update();
+  updateAllEntites();
   applyAllPhysics();
   checkAllcollisions();
 
@@ -1835,6 +1966,13 @@ function makeTower(x, y, amount) {
   }
 }
 
+//Update all entities
+function updateAllEntites() {
+  for (let entity of entities) {
+    entity.update();
+  }
+}
+
 //Helper function to loop through entities and platforms and check collisions
 function checkAllcollisions() {
   for (let platform of platforms) {
@@ -1854,6 +1992,12 @@ function checkAllcollisions() {
       for (let chunk of object.chunks) {
         platform.checkcollision(chunk);
       }
+    }
+  }
+
+  for (let entity of entities) {
+    if (entity !== player) {
+      entity.applyHit();
     }
   }
 }
@@ -2080,7 +2224,7 @@ function stage1() {
   //Death block underneath
   createSpikePit(width/2, groundLevel + 100, 242);
 
-  entities.push(new Mushroom(width/2, height/2, 0, 0))
+  entities.push(new Mushroom(width/2, height/2 + 275, 0, 0));
 
   //Right cluster
   createStage(width / 2 + 355, groundLevel , 20, 10);
