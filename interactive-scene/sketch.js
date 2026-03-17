@@ -51,6 +51,12 @@ let playerUpwardPunch;
 let playerLedgeSheet;
 let playerDownSlam;
 let playerBlock;
+let mushroomIdle;
+let mushroomAttack;
+let mushroomDie;
+let mushroomRun;
+let mushroomStun;
+let mushroomGotHit;
 
 //Props and textures
 let deadGrassTexture;
@@ -90,7 +96,7 @@ let crate;
 
 
 function preload() {
-  //Animations
+  //Player Animations
   playerIdleSheet = loadImage("Character/idle.png");
   playerrollingSheet = loadImage("Character/rolling.png");
   playerJumpSheet = loadImage("Character/jump.png");
@@ -103,6 +109,14 @@ function preload() {
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
   playerDownSlam = loadImage("Character/down.png");
   playerBlock = loadImage("Character/block.png");
+
+  //Mushroom animations
+  mushroomAttack = loadImage("Mushroom/Mushroom-Attack.png")
+  mushroomDie = loadImage("Mushroom/Mushroom-Die.png")
+  mushroomIdle = loadImage("Mushroom/Mushroom-Idle.png")
+  mushroomRun = loadImage("Mushroom/Mushroom-Run.png")
+  mushroomStun = loadImage("Mushroom/Mushroom-Stun.png")
+  mushroomGotHit = loadImage("Mushroom/Mushroom-Hit.png")
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -297,60 +311,6 @@ class Humanoid {
 
     //Reset ground state
     this.grounded = false;
-  }
-
-  handleState() {
-    //Skip if currently in an action state
-    if (
-      this.actionState === "rolling" ||
-      this.actionState.startsWith("punch") ||
-      this.actionState === "ledgeClimb" ||
-      this.actionState === "blocking"
-    ) {
-      return;
-    }
-    
-
-    //Movement/Velocity related state handling
-    if (!this.grounded && this.yVel > 0.5 && this.actionState !== "downSlam") {
-      this.lastActionState = this.actionState;
-      this.actionState = "jumpFall";
-
-      //Elongate player depending on velocity for speed effect
-      this.yScale = Math.min(1.2, 1 + this.yVel * 0.005);
-      this.xScale = Math.max(0.8, 1 - this.yVel * 0.005);
-    }
-    else if (this.grounded && this.actionState === "landing") {
-      //Return player to normal scale
-      this.yScale = 1;
-      this.xScale = 1;
-
-      //Return player to normal state after landing
-      if (millis() - this.timeSinceLand > 100) {
-        this.lastActionState = this.actionState;
-        this.actionState = "idle";
-      }
-    }
-
-    //If grounded and standing still Idle
-    else if (this.grounded && this.xVel === 0) {
-      this.lastActionState = this.actionState;
-      this.actionState = "idle";
-    }
-
-    //if grounded and moving and holding shift then sprinting
-    else if (this.grounded && abs(this.xVel) > 1) {
-      if (keyIsDown(SHIFT) && this.actionState !== "rolling") {
-        this.lastActionState = this.actionState;
-        this.actionState = "sprinting";
-      }
-
-      //If moving running
-      else {
-        this.lastActionState = this.actionState;
-        this.actionState = "running";
-      }
-    }
   }
 
   //Allows entity to jump
@@ -636,6 +596,61 @@ class Player extends Humanoid {
     };
   }
 
+  //Handles state to match with landing, sprinting ect
+  handleState() {
+    //Skip if currently in an action state
+    if (
+      this.actionState === "rolling" ||
+      this.actionState.startsWith("punch") ||
+      this.actionState === "ledgeClimb" ||
+      this.actionState === "blocking"
+    ) {
+      return;
+    }
+    
+
+    //Movement/Velocity related state handling
+    if (!this.grounded && this.yVel > 0.5 && this.actionState !== "downSlam") {
+      this.lastActionState = this.actionState;
+      this.actionState = "jumpFall";
+
+      //Elongate player depending on velocity for speed effect
+      this.yScale = Math.min(1.2, 1 + this.yVel * 0.005);
+      this.xScale = Math.max(0.8, 1 - this.yVel * 0.005);
+    }
+    else if (this.grounded && this.actionState === "landing") {
+      //Return player to normal scale
+      this.yScale = 1;
+      this.xScale = 1;
+
+      //Return player to normal state after landing
+      if (millis() - this.timeSinceLand > 100) {
+        this.lastActionState = this.actionState;
+        this.actionState = "idle";
+      }
+    }
+
+    //If grounded and standing still Idle
+    else if (this.grounded && this.xVel === 0) {
+      this.lastActionState = this.actionState;
+      this.actionState = "idle";
+    }
+
+    //if grounded and moving and holding shift then sprinting
+    else if (this.grounded && abs(this.xVel) > 1) {
+      if (keyIsDown(SHIFT) && this.actionState !== "rolling") {
+        this.lastActionState = this.actionState;
+        this.actionState = "sprinting";
+      }
+
+      //If moving running
+      else {
+        this.lastActionState = this.actionState;
+        this.actionState = "running";
+      }
+    }
+  }
+
   //Run every frame to update state/anims/inputs
   update() {
     
@@ -714,7 +729,7 @@ class Player extends Humanoid {
       }
     }
 
-    console.log(this.actionState);
+    //console.log(this.actionState);
   }
 
   //Check input buffers (tries to run the input)
@@ -858,7 +873,7 @@ class Player extends Humanoid {
     else if (keyIsDown(83) && !this.grounded && this.actionState !== "downSlam") {
       this.actionState = "downSlam";
       this.currentHit = 1;
-      this.yVel += 5;
+      this.yVel = Math.max(5, this.yVel + 5)
     }
 
     //Normal punch
@@ -956,6 +971,185 @@ class Player extends Humanoid {
   }
 }
 
+class Mushroom extends Humanoid {
+  constructor(x, y, startPos, endPos) {
+    super(x, y);
+
+    //Settings
+    this.imageScale = 1.5
+    this.sizeY = 27 * this.imageScale
+    this.sizeX = 20 * this.imageScale 
+    this.active = true
+
+    //Variables specific to entity for enemy AI
+    this.startPos = startPos;
+    this.endPos = endPos;
+    this.hasTarget = false
+
+    //Animations
+    this.frameWidth = 0;
+    this.frameHeight = 0;
+    this.currentSheet = 0;
+
+    this.hit = mushroomAttack
+    this.die = mushroomDie
+    this.stunned = mushroomStun
+    this.idle = mushroomIdle
+    this.run = mushroomRun
+    this.gotHit = mushroomGotHit
+    this.sprites = {
+      idle: {
+        sheet: this.idle,
+        totalFrames: 7,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 6,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+        shouldLoop: true,
+      },
+
+      landing: {
+        sheet: this.idle,
+        totalFrames: 7,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 6,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+        shouldLoop: true,
+      },
+
+      attack: {
+        sheet: this.hit,
+        totalFrames: 10,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 2,
+        yOffset: 0,
+        charHeight: 36,
+        startFrame: 0,
+        oneTime: true,
+      },
+
+      gotHit: {
+        sheet: this.gotHit,
+        totalFrames: 5,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 5,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+        oneTime: true,
+      },
+    }
+  }
+
+  display() {
+     console.log(this.actionState)
+    //Identify current anim and define variables
+    let anim = this.sprites[this.actionState];
+
+    this.frameWidth = this.sprites[this.actionState].imageWidth;
+    this.frameHeight = this.sprites[this.actionState].imageHeight;
+    this.xCrop = (this.currentFrame + anim.startFrame) * this.frameWidth;
+    this.currentSheet = anim.sheet;
+    this.totalImage = anim.totalFrames;
+
+    //Make origin at Mushrooms's current position to flip player image when neccesary
+    push();
+    translate(this.x, this.y);
+
+    if (this.directionFacing === "left") {
+      scale(-1, 1); // Flip horizontally
+    }
+
+    //If it is the correct frame to advance frames advance
+    if (frameCount % anim.spriteSpeed === 0) {
+      let lastFrame = this.currentFrame;
+      this.currentFrame = (this.currentFrame + 1) % anim.totalFrames;
+
+      //If animation shouldn't loop, and isn't one time, hold last frame
+      if (this.currentFrame === 0 && !anim.shouldLoop && !anim.oneTime) {
+        this.currentFrame = lastFrame;
+      }
+
+      //If animation is onetime, return to idle after finished
+      else if (this.currentFrame === 0 && !anim.shouldLoop && anim.oneTime) {
+        this.lastActionState = this.actionState;
+        this.actionState = "idle";
+      }
+    }
+
+    //Vertical offset which adjusts to the different animations (avoid changing)
+    let verticalOffset = anim.charHeight * this.imageScale * this.yScale / 2;
+
+    if (this.actionState === "attack") {
+      drawingContext.shadowBlur = 20;
+      drawingContext.shadowColor = color(255,0 ,0);
+    }
+
+    image(
+      this.currentSheet,
+      0,
+      -verticalOffset + this.sizeY / 2,
+      this.frameWidth * this.imageScale * this.xScale,
+      this.frameHeight * this.imageScale * this.yScale,
+      this.xCrop,
+      anim.yOffset,
+      this.frameWidth,
+      anim.charHeight
+    );
+    
+
+    //Reset
+    pop();
+  }
+
+  update() {
+    //Reset animation frame
+    if (this.actionState !== this.lastActionState) {
+      this.currentFrame = 0;
+      this.lastActionState = this.actionState;
+    }
+
+    //If attacking run hitbox chcks
+    let facing = this.directionFacing === "left" ? -1 : 1;
+
+    if (this.actionState === "attack"){
+      this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this);
+    }
+
+    //Variable to remember if we have already applied opposite velocity when hitting person
+    let pushedBack = false;
+
+    //Run on hit for things hit and shake screen
+    if (this.hitItems.length) {
+      for (let item of this.hitItems) {
+        if (!this.alrHit.includes(item) && item.active){
+          this.alrHit.push(item);
+          item.onHit();
+          screenShake = 4;
+          if (this.actionState ==="attack" && !pushedBack){
+            this.xVel += this.directionFacing === "right" ? -2 : 2;
+            pushedBack = true;
+          }
+        }
+      }
+    }
+  }
+
+  onHit() {
+    this.currentFrame = 0
+    this.actionState = "gotHit"
+
+    this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3
+  }
+}
+
 //Platform class
 class Platform {
   constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY, canClimb, bottomBlock, cantCollide) {
@@ -1021,6 +1215,10 @@ class Platform {
 
   //Snaps an item to a ledge with a side
   snapToLedge(item, side) {
+    if (item instanceof Mushroom) {
+      return
+    }
+    
     this.lastActionState = this.actionState;
     item.actionState = "ledgeClimb";
     item.xVel = 0;
@@ -1525,7 +1723,7 @@ function setup() {
     }
   };
 
-  player = new Player(width / 2 + 2000, groundLevel - 250);
+  player = new Player(width / 2 , groundLevel - 250);
   stage1();
   
   entities.push(player);
@@ -1549,7 +1747,7 @@ function draw() {
 
   //Follow player with camera
   let targetX = width / 2 - player.x - 250 ;
-  let targetY = height / 2 - player.y - 50; 
+  let targetY = height / 2 - player.y - 100; 
 
 
   if (sHoldTime > 500 && player.grounded) {
@@ -1785,6 +1983,7 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
     if (!isOutside) {
       items.push(entity);
     }
+
   }
 
   for (let object of brObjects) {
@@ -1880,6 +2079,8 @@ function stage1() {
 
   //Death block underneath
   createSpikePit(width/2, groundLevel + 100, 242);
+
+  entities.push(new Mushroom(width/2, height/2, 0, 0))
 
   //Right cluster
   createStage(width / 2 + 355, groundLevel , 20, 10);
