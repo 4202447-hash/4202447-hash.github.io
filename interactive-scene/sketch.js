@@ -318,7 +318,7 @@ class Player extends Humanoid {
     this.currentHit = 1;
     this.hitCD = 300;
     this.blockCooldown = 1000;
-    this.lastBlock = 0
+    this.lastBlock = 0;
 
     //Animation Sheets
     this.runningSheet = playerRunningSheet;
@@ -539,8 +539,7 @@ class Player extends Humanoid {
     if (
       this.actionState !== "rolling" &&
       !this.actionState.startsWith("punch") &&
-      abs(this.xVel) <= 6)
-     {
+      abs(this.xVel) <= 6) {
       if (this.moveDir !== 0) {
         this.speed = this.actionState === "sprinting" ? 5 : this.moveSpeed;
         let accel = this.speed;
@@ -892,11 +891,11 @@ class Player extends Humanoid {
   //Function to block
   block() {
     if (millis() - this.lastBlock < this.blockCooldown) {
-      return
+      return;
     }
 
     if (this.actionState.startsWith(this.currentWeapon) || millis() - this.lastHitTaken < 500) {
-      return
+      return;
     }
     this.lastBlock = millis();
     this.lastActionState === this.actionState;
@@ -990,10 +989,10 @@ class Mushroom extends Humanoid {
     this.sizeY = 27 * this.imageScale;
     this.sizeX = 20 * this.imageScale; 
     this.active = true;
-    this.moveSpeed = 2
-    this.attackCooldown = 1500
-    this.health = 5
-    this.directionFacing = direction || "right"
+    this.moveSpeed = 2;
+    this.attackCooldown = 1500;
+    this.health = 5;
+    this.directionFacing = direction || "right";
 
     //Variables specific to entity for enemy AI
     this.startPos = startPos;
@@ -1001,7 +1000,7 @@ class Mushroom extends Humanoid {
     this.hasTarget = false;
     this.hitItems = [];
     this.alrHit = [];
-    this.lastAttack
+    this.lastAttack;
 
     this.moveDir = -1;
 
@@ -1133,15 +1132,15 @@ class Mushroom extends Humanoid {
     //If there is nothing ahead of us turn around
     let lookAhead = this.directionFacing === "right" ? -5 : 5;
     let floorCheckX = this.x + lookAhead;
-    let floorCheckY = this.bottom + 10
+    let floorCheckY = this.bottom + 10;
 
     //Check if there is a valid path in front of you
     if (!checkIfPath(floorCheckX, floorCheckY) && this.grounded) {
-      let oppositeX = this.x - lookAhead
+      let oppositeX = this.x - lookAhead;
 
       //if there is a valid path in the opposite side turn around
       if (checkIfPath(oppositeX, floorCheckY)) {
-        this.directionFacing = (this.directionFacing === "left") ? "right" : "left";
+        this.directionFacing = this.directionFacing === "left" ? "right" : "left";
         this.moveDir *= -1;
       }
     }
@@ -1151,7 +1150,7 @@ class Mushroom extends Humanoid {
       this.speed = this.moveSpeed;
       let accel = this.speed;
 
-      this.moveDir = this.directionFacing === "right" ? -1 : 1
+      this.moveDir = this.directionFacing === "right" ? -1 : 1;
 
       this.xVel = this.moveDir * accel;
     }
@@ -1207,12 +1206,12 @@ class Mushroom extends Humanoid {
       this.currentFrame = (this.currentFrame + 1) % anim.totalFrames;
 
       if (this.actionState === "attack" && this.currentFrame === 0) {
-          setTimeout(() => {
-            if (this.actionState === "attack") {
-              this.actionState = "attackRecover"
-            }
+        setTimeout(() => {
+          if (this.actionState === "attack") {
+            this.actionState = "attackRecover";
+          }
             
-          }, 250);
+        }, 250);
       }
 
       //If animation shouldn't loop, and isn't one time, hold last frame
@@ -1225,36 +1224,36 @@ class Mushroom extends Humanoid {
 
         //If we are in the attack wind stage, go to attack, and launch
         if (this.actionState === "attackWind") {
-          this.actionState = "attack"
-          this.xVel = this.directionFacing === "right" ? -7 : 7
-          this.yVel = -3
+          this.actionState = "attack";
+          this.xVel = this.directionFacing === "right" ? -7 : 7;
+          this.yVel = -3;
           this.lastAttack = millis();
-          this.sizeX += 25
+          this.sizeX += 25;
         }
 
         //if we are in the recovery stage of the attack, return to idle and reset settings
         else if (this.actionState === "attackRecover") {
-          this.sizeX -= 25
+          this.sizeX -= 25;
           setTimeout(() => {
             this.moveSpeed = 2;
           }, 500);
-          this.actionState = "idle"
+          this.actionState = "idle";
         }
 
         else if (this.actionState === "stun") {
           this.moveSpeed = 2;
-          this.actionState = "idle"
-          this.sizeX -= 25
+          this.actionState = "idle";
+          this.sizeX -= 25;
         }
 
         //Whenever we get hit, check if we are still alive
         else if (this.actionState === "gotHit") {
           if (this.health <= 0) {
-            this.actionState = "dead"
-            this.active = false
+            this.actionState = "dead";
+            this.active = false;
           }
           else {
-            this.actionState = "idle"
+            this.actionState = "idle";
           }
         }
         
@@ -1310,7 +1309,7 @@ class Mushroom extends Humanoid {
       
     }
     else if (this.actionState === "running") {
-      this.actionState = "idle"
+      this.actionState = "idle";
     }
   }
 
@@ -1329,8 +1328,8 @@ class Mushroom extends Humanoid {
   onHit() {
     this.currentFrame = 0;
     this.actionState = "gotHit";
-    this.moveSpeed = 0
-    this.health -= 1
+    this.moveSpeed = 0;
+    this.health -= 1;
 
     this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3;
   }
@@ -1401,14 +1400,14 @@ class Mushroom extends Humanoid {
 
     //If player is blocking get stunned
     if (player.actionState === "blocking" && this.directionFacing === player.directionFacing && this.actionState === "attack") {
-      this.actionState = "stun"
-      this.moveSpeed = 0
+      this.actionState = "stun";
+      this.moveSpeed = 0;
       this.xVel = player.x < this.x ? this.xVel + 12 : this.xVel - 12;
     }
 
     //Dont damage when stunned
     if (this.actionState === "stun") {
-      return
+      return;
     }
 
     //Player hit on touch
@@ -1450,28 +1449,28 @@ class Mushroom extends Humanoid {
       this.actionState === "attack" ||
       this.actionState === "attackRecover" ||
       !this.active) {
-      return
+      return;
     }
 
     //First check if the player is directly in front or behind, and if they are attack them
     if (abs(this.x - player.x) < 100 && player.y + player.sizeY/2 > this.y - this.sizeY/2  ) {
       if (millis() - this.lastAttack < 1500) {
-        return
+        return;
       }
 
       this.moveSpeed = 0;
 
       //If player is behind mushroom
       if (player.x > this.x) {
-        this.directionFacing = "left"
-        this.moveDir = -1
+        this.directionFacing = "left";
+        this.moveDir = -1;
       }
       else if (player.x < this.x ) {
-        this.directionFacing = "right"
-        this.moveDir = 1
+        this.directionFacing = "right";
+        this.moveDir = 1;
       }
 
-      this.actionState = "attackWind"
+      this.actionState = "attackWind";
     }
   }
 }
@@ -1684,7 +1683,7 @@ class Platform {
         item.x = this.left - item.sizeX / 2;
 
         if (item instanceof Mushroom) {
-          item.directionFacing = item.directionFacing === "right" ? "left" : "right"
+          item.directionFacing = item.directionFacing === "right" ? "left" : "right";
         }
 
         return true;
@@ -1698,8 +1697,8 @@ class Platform {
         item.x = this.right + item.sizeX / 2;
 
         if (item instanceof Mushroom) {
-          item.directionFacing = item.directionFacing === "left" ? "right" : "left"
-          console.log("TURNED AROUND")
+          item.directionFacing = item.directionFacing === "left" ? "right" : "left";
+          console.log("TURNED AROUND");
         }
 
         return true;
@@ -1736,8 +1735,9 @@ class HurtBlock extends Platform{
         item.gotHit();
       }
 
+      //This doesn't actually work right now as the platform collision function does not return true if it hits a mushroom (need fix)
       if (item instanceof Mushroom) {
-        item.health = 0
+        item.health = 0;
       }
     }
   }
@@ -1834,6 +1834,7 @@ class breakableObject {
 
   }
 
+  //What happens when this object is hit
   onHit() {
     if (!this.active) {
       return;
@@ -1855,6 +1856,7 @@ class breakableObject {
     }
   }
 
+  //Displays object
   display() {
     if (this.active) {
       image(this.img, this.x, this.y, this.sizeX, this.sizeY);
@@ -1870,6 +1872,7 @@ class breakableObject {
     }
   }
 
+  //Checks collisions
   checkCollision(item) {
     if (!this.active) {
       return;
@@ -2021,6 +2024,7 @@ class Gate {
     }
   }
 
+  //What happens when the gate is touched
   isTouched() {
     if (this.touched()) {
       fade = "out";
@@ -2050,25 +2054,19 @@ function setup() {
   console.log("Image Width: " + playerIdleSheet.width);
   console.log("Image Height: " + playerIdleSheet.height);
 
+  //Initialize decal tables for platforms
   deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR];
   stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR];
   dirtStage = [dirtStageL, dirtStageM, dirtStageR];
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
   stoneStage = [stoneStageL, stoneStageM, stoneStageR];
 
-  stages = { testStage:
-    {
-      spawPointX: width/2,
-      spawnPointY: height/2
-    }
-  };
-
+  //Load player and stage
   player = new Player(width / 2, groundLevel - 150);
-  stage1();
-  
   entities.push(player);
 
-  console.log(platforms);
+  stage1();
+  
 }
 
 function draw() {
@@ -2106,7 +2104,8 @@ function draw() {
   //Shake screen at screenShake pixels randomly in any direction
   let screenShakeX = 0;
   let screenShakeY = 0;
-  
+
+  //Shake screen if screenshake is above 0.1 (screenshake is the magnitude)
   if (screenShake > 0.1) {
     screenShakeX = random(-screenShake, screenShake);
     screenShakeY = random(-screenShake, screenShake);
@@ -2126,7 +2125,6 @@ function draw() {
   pop();
 
   //player.showGUI();
-
   handleFade();
 }
 
@@ -2144,6 +2142,7 @@ function keyPressed() {
     player.pressedS = 0;
   }
 
+  //For looking down
   if (key === 's' && player.grounded) {
     player.phaseCurrentPlatform();
     player.pressedS = millis();
@@ -2154,16 +2153,17 @@ function keyPressed() {
   }
 }
 
+//When the S key is released, fix camera
 function keyReleased() {
   if (key === 's') {
     player.pressedS = 0;
   }
 }
 
+//When mouse is pressed attack
 function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
-  player.pressedS = 0;
 }
 
 //Helper function to draw small tower of oneway collision platforms
@@ -2184,18 +2184,21 @@ function updateAllEntites() {
 
 //Helper function to loop through entities and platforms and check collisions
 function checkAllcollisions() {
+  //Check collision with entities
   for (let platform of platforms) {
     for (let person of entities) {
       platform.checkcollision(person);
     }
   }
 
+  //Check collision of breakable objects
   for (let object of brObjects) {
     for (let person of entities) {
       object.checkCollision(person);
     }
   }
 
+  //Check collision with debris
   for (let platform of platforms) {
     for (let object of brObjects) {
       for (let chunk of object.chunks) {
@@ -2204,6 +2207,7 @@ function checkAllcollisions() {
     }
   }
 
+  //For enemies, run their AI along with their apply hit function as that is essentially their collision
   for (let entity of entities) {
     if (entity !== player) {
       entity.applyHit();
@@ -2212,24 +2216,28 @@ function checkAllcollisions() {
   }
 }
 
-function drawAllPlatforms() {
-  for (let platform of platforms) {
-    platform.display();
-  }
-}
-
+//Checks gates for if player teleporting
 function checkGates() {
   for (let gate of gates) {
     gate.isTouched();
   }
 }
 
+//Draw all functions (different incase we ever need to draw one thing without the other)
+function drawAllPlatforms() {
+  for (let platform of platforms) {
+    platform.display();
+  }
+}
+
+//Draw all entites
 function drawAllEntities() {
   for (let entity of entities) {
     entity.display();
   }
 }
 
+//Draws all breakable bojects
 function drawAllBreakableObjects() {
   for (let object of brObjects) {
     object.display();
@@ -2248,8 +2256,9 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-//Unused function to draw a parallex background 
+//function to draw a parallex background 
 function drawBackground() {
+  //adjust respective layers speed to change speed at which image moves
   let bgX = cameraX * layer1Speed % width;
 
   image(backgroundLayer1, bgX, backgroundY, width/2, height);
@@ -2320,7 +2329,7 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   let squareTop = y - sizeY/2;
   let squareBottom = y + sizeY/2;
 
-  //createPlatform(x, y, 1, deadGrassPlatform)
+  //Loop through breakable objects and entities and return what has been hit
 
   for (let entity of entities) {
     if (entity === self) {
@@ -2341,8 +2350,6 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   }
 
   for (let object of brObjects) {
-
-
     let top = object.y - object.sizeY / 2;
     let bottom = object.y + object.sizeY / 2;
     let left = object.x - object.sizeX / 2;
@@ -2511,7 +2518,7 @@ function stage2() {
   createStage(width / 2 + 1250, groundLevel + 12 * 64 , 6, 35, false, stoneStage);
 
   //Actual Stage (pit)
-  createStage(width / 2 + 3000, groundLevel + 1200, 34, 20, false, stoneStage)
+  createStage(width / 2 + 3000, groundLevel + 1200, 34, 20, false, stoneStage);
   createStage(width / 2 + 2500, groundLevel + 1000, 16, 30, false, stoneStage);
   createStage(width / 2 + 3500, groundLevel + 1150, 20, 28, false, stoneStage);
 
