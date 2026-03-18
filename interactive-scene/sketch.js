@@ -238,82 +238,6 @@ class Humanoid {
     this.lastLedgeClimb = 0;
   }
 
-  //Function to apply forces
-  applyForces() {
-    //Return if currently on a ledge
-    if (
-      this.actionState === "ledgeClimb" ||
-      this.actionState === "ledgeClimb"
-    ) {
-      this.yVel = 0;
-      this.xVel = 0;
-      return;
-    }
-
-    //Movement
-    if (
-      this.actionState !== "rolling" &&
-      !this.actionState.startsWith("punch") &&
-      abs(this.xVel) <= 6
-    ) {
-      if (this.moveDir !== 0) {
-        this.speed = this.actionState === "sprinting" ? 5 : this.moveSpeed;
-        let accel = this.speed;
-        this.directionFacing = this.moveDir === 1 ? "right" : "left";
-
-        //Make sure decay of xVel doesn't cause speed to drop below walk speed (for roll walking)
-        if (abs(this.xVel) > accel) {
-          //this.xVel -= Math.sign(this.xVel) * 0.1;
-          let resultSpeed = Math.max(abs(this.xVel), accel);
-          this.xVel = resultSpeed * Math.sign(this.xVel);
-        }
-      
-        //Slowly change direction if moveDir & xVel direction !== match
-        if (
-          Math.sign(this.xVel) !== this.moveDir &&
-          this.actionState === "sprinting"
-        ) {
-          let turnPower = 0.4;
-          this.xVel += this.moveDir * turnPower;
-          this.lastActionState = this.actionState;
-          if (abs(this.xVel) > 3) {
-            this.actionState = "sprinting";
-          }
-
-          //Otherwise treat speed as normal
-        }
-        else {
-          this.xVel = this.moveDir * accel;
-        }
-      }
-    }
-
-    //Apply gravity
-    if (!this.grounded && this.actionState) {
-      this.yVel += gravitationalForce;
-    }
-
-    this.y += this.yVel;
-    this.x = this.x + this.xVel;
-
-    //Apply friction if not rolling, 1/4 in air
-    if (this.moveDir === 0 && this.actionState !== "rolling") {
-      let currentFriction = this.grounded
-        ? frictionalForce
-        : frictionalForce / 4;
-
-      if (abs(this.xVel) <= currentFriction) {
-        this.xVel = 0;
-      }
-      else {
-        this.xVel -= (this.xVel > 0 ? 1 : -1) * currentFriction;
-      }
-    }
-
-    //Reset ground state
-    this.grounded = false;
-  }
-
   //Allows entity to jump
   jump() {
     if (this.states.includes(this.actionState)) {
@@ -390,9 +314,11 @@ class Player extends Humanoid {
     this.frameHeight = 0;
     this.currentSheet = 0;
 
-    //Attacks
+    //Attacks and cooldowns
     this.currentHit = 1;
     this.hitCD = 300;
+    this.blockCooldown = 1000;
+    this.lastBlock = 0
 
     //Animation Sheets
     this.runningSheet = playerRunningSheet;
@@ -588,13 +514,88 @@ class Player extends Humanoid {
         totalFrames: 3,
         imageWidth: 128,
         imageHeight: 35,
-        spriteSpeed: 6,
+        spriteSpeed: 2,
         yOffset: 18,
         charHeight: 35,
         startFrame: 0,
         oneTime: true,
       }
     };
+  }
+
+  //Function to apply forces
+  applyForces() {
+    //Return if currently on a ledge
+    if (
+      this.actionState === "ledgeClimb" ||
+      this.actionState === "ledgeClimb"
+    ) {
+      this.yVel = 0;
+      this.xVel = 0;
+      return;
+    }
+
+    //Movement
+    if (
+      this.actionState !== "rolling" &&
+      !this.actionState.startsWith("punch") &&
+      abs(this.xVel) <= 6)
+     {
+      if (this.moveDir !== 0) {
+        this.speed = this.actionState === "sprinting" ? 5 : this.moveSpeed;
+        let accel = this.speed;
+        this.directionFacing = this.moveDir === 1 ? "right" : "left";
+
+        //Make sure decay of xVel doesn't cause speed to drop below walk speed (for roll walking)
+        if (abs(this.xVel) > accel) {
+          let resultSpeed = Math.max(abs(this.xVel), accel);
+          this.xVel = resultSpeed * Math.sign(this.xVel);
+        }
+      
+        //Slowly change direction if moveDir & xVel direction !== match
+        if (
+          Math.sign(this.xVel) !== this.moveDir &&
+          this.actionState === "sprinting"
+        ) {
+          let turnPower = 0.4;
+          this.xVel += this.moveDir * turnPower;
+          this.lastActionState = this.actionState;
+          if (abs(this.xVel) > 3) {
+            this.actionState = "sprinting";
+          }
+
+          //Otherwise treat speed as normal
+        }
+        else {
+          this.xVel = this.moveDir * accel;
+        }
+      }
+    }
+
+    //Apply gravity
+    if (!this.grounded && this.actionState) {
+      this.yVel += gravitationalForce;
+    }
+
+    this.y += this.yVel;
+    this.x = this.x + this.xVel;
+
+    //Apply friction if not rolling, 1/4 in air
+    if ((this.moveDir === 0 || this.moveSpeed === 0) && this.actionState !== "rolling") {
+      let currentFriction = this.grounded
+        ? frictionalForce
+        : frictionalForce / 4;
+
+      if (abs(this.xVel) <= currentFriction) {
+        this.xVel = 0;
+      }
+      else {
+        this.xVel -= (this.xVel > 0 ? 1 : -1) * currentFriction;
+      }
+    }
+
+    //Reset ground state
+    this.grounded = false;
   }
 
   //Handles state to match with landing, sprinting ect
@@ -890,6 +891,10 @@ class Player extends Humanoid {
 
   //Function to block
   block() {
+    if (millis() - this.lastBlock < this.blockCooldown) {
+      return
+    }
+    this.lastBlock = millis();
     this.lastActionState === this.actionState;
     this.actionState = "blocking";
   }
@@ -973,7 +978,7 @@ class Player extends Humanoid {
 }
 
 class Mushroom extends Humanoid {
-  constructor(x, y, startPos, endPos) {
+  constructor(x, y, startPos, endPos, direction) {
     super(x, y);
 
     //Settings
@@ -982,6 +987,9 @@ class Mushroom extends Humanoid {
     this.sizeX = 20 * this.imageScale; 
     this.active = true;
     this.moveSpeed = 2
+    this.attackCooldown = 1500
+    this.health = 5
+    this.directionFacing = direction || "right"
 
     //Variables specific to entity for enemy AI
     this.startPos = startPos;
@@ -989,6 +997,7 @@ class Mushroom extends Humanoid {
     this.hasTarget = false;
     this.hitItems = [];
     this.alrHit = [];
+    this.lastAttack
 
     this.moveDir = -1;
 
@@ -1051,7 +1060,6 @@ class Mushroom extends Humanoid {
         yOffset: 0,
         charHeight: 64,
         startFrame: 4,
-        oneTime: false,
       },
 
       attackRecover: {
@@ -1089,11 +1097,89 @@ class Mushroom extends Humanoid {
         startFrame: 0,
         shouldLoop: true
       },
+
+      dead: {
+        sheet: this.die,
+        totalFrames: 15,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 5,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+      },
+
+      stun: {
+        sheet: this.stunned,
+        totalFrames: 18,
+        imageWidth: 80,
+        imageHeight: 64,
+        spriteSpeed: 12,
+        yOffset: 0,
+        charHeight: 64,
+        startFrame: 0,
+        oneTime: true
+      }
     };
   }
 
+  applyForces() {
+    //Movement
+
+    //If there is nothing ahead of us turn around
+    let lookAhead = this.directionFacing === "right" ? -5 : 5;
+    let floorCheckX = this.x + lookAhead;
+    let floorCheckY = this.bottom + 10
+
+    //Check if there is a valid path in front of you
+    if (!checkIfPath(floorCheckX, floorCheckY) && this.grounded) {
+      let oppositeX = this.x - lookAhead
+
+      //if there is a valid path in the opposite side turn around
+      if (checkIfPath(oppositeX, floorCheckY)) {
+        this.directionFacing = (this.directionFacing === "left") ? "right" : "left";
+        this.moveDir *= -1;
+      }
+    }
+
+
+    if (this.moveDir !== 0 && this.moveSpeed !== 0) {
+      this.speed = this.moveSpeed;
+      let accel = this.speed;
+
+      this.moveDir = this.directionFacing === "right" ? -1 : 1
+
+      this.xVel = this.moveDir * accel;
+    }
+    
+
+    //Apply gravity
+    if (!this.grounded && this.actionState) {
+      this.yVel += gravitationalForce;
+    }
+
+    this.y += this.yVel;
+    this.x = this.x + this.xVel;
+
+    //Apply friction if not rolling, 1/4 in air
+    if ((this.moveDir === 0 || this.moveSpeed === 0) && this.actionState !== "rolling") {
+      let currentFriction = this.grounded
+        ? frictionalForce
+        : frictionalForce / 4;
+
+      if (abs(this.xVel) <= currentFriction) {
+        this.xVel = 0;
+      }
+      else {
+        this.xVel -= (this.xVel > 0 ? 1 : -1) * currentFriction;
+      }
+    }
+
+    //Reset ground state
+    this.grounded = false;
+  }
+
   display() {
-    console.log(this.actionState);
     //Identify current anim and define variables
     let anim = this.sprites[this.actionState];
 
@@ -1107,7 +1193,7 @@ class Mushroom extends Humanoid {
     push();
     translate(this.x, this.y);
 
-    if (this.directionFacing === "right") {
+    if (this.directionFacing === "left") {
       scale(-1, 1); // Flip horizontally
     }
 
@@ -1116,26 +1202,65 @@ class Mushroom extends Humanoid {
       let lastFrame = this.currentFrame;
       this.currentFrame = (this.currentFrame + 1) % anim.totalFrames;
 
+      if (this.actionState === "attack" && this.currentFrame === 0) {
+          setTimeout(() => {
+            if (this.actionState !== "stun") {
+              this.actionState = "attackRecover"
+            }
+            
+          }, 250);
+      }
+
       //If animation shouldn't loop, and isn't one time, hold last frame
       if (this.currentFrame === 0 && !anim.shouldLoop && !anim.oneTime) {
         this.currentFrame = lastFrame;
-
-        this.xVel = this.directionFacing === "left" ? -2 : 2
-        setTimeout(() => {
-          this.actionState = "attackRecover"
-        }, 150);
       }
 
       //If animation is onetime, return to idle after finished, also deal with attack stages
       else if (this.currentFrame === 0 && !anim.shouldLoop && anim.oneTime) {
+
+        //If we are in the attack wind stage, go to attack, and launch
         if (this.actionState === "attackWind") {
           this.actionState = "attack"
-          this.xVel = this.directionFacing === "left" ? -8 : 8
+          this.xVel = this.directionFacing === "right" ? -7 : 7
+          this.yVel = -3
+          this.lastAttack = millis();
+          this.sizeX += 25
         }
+
+        //if we are in the recovery stage of the attack, return to idle and reset settings
+        else if (this.actionState === "attackRecover") {
+          this.sizeX -= 25
+          setTimeout(() => {
+            this.moveSpeed = 2;
+          }, 500);
+          this.actionState = "idle"
+        }
+
+        else if (this.actionState === "stun") {
+          this.moveSpeed = 2;
+          this.actionState = "idle"
+          this.sizeX -= 25
+        }
+
+        //Whenever we get hit, check if we are still alive
+        else if (this.actionState === "gotHit") {
+          if (this.health <= 0) {
+            this.actionState = "dead"
+            this.active = false
+          }
+          else {
+            this.actionState = "idle"
+          }
+        }
+        
+        //Return to idle if no conditions met
         else{
           this.lastActionState = this.actionState;
           this.actionState = "idle";
         }
+
+        
       }
     }
 
@@ -1149,7 +1274,7 @@ class Mushroom extends Humanoid {
 
     image(
       this.currentSheet,
-      0,
+      this.actionState === "attack" ? 25 : 0,
       -verticalOffset + this.sizeY / 2,
       this.frameWidth * this.imageScale * this.xScale,
       this.frameHeight * this.imageScale * this.yScale,
@@ -1162,6 +1287,7 @@ class Mushroom extends Humanoid {
 
     //Reset
     pop();
+
   }
 
   handleState() {
@@ -1170,45 +1296,37 @@ class Mushroom extends Humanoid {
       this.actionState === "attack" || 
       this.actionState === "gotHit" ||
       this.actionState === "attackWind" ||
-      this.actionState === "attackRecover"
+      this.actionState === "attackRecover" ||
+      this.actionState === "stun"
     ) {
       return;
     }
-
-    if (abs(this.xVel) > 0) {
+    if (abs(this.xVel) > 0.1) {
       this.actionState = "running" ;
+      
     }
     else if (this.actionState === "running") {
       this.actionState = "idle"
     }
   }
 
+  //Update mushroom
   update() {
     this.handleState();
-
-    if (this.moveDir === -1) {
-      this.xVel = -2;
-      this.directionFacing = "left"
-    }
-    else if (this.moveDir === 1) {
-      this.xVel = 2;
-      this.directionFacing = "right"
-    }
 
     //Reset animation frame
     if (this.actionState !== this.lastActionState) {
       this.currentFrame = 0;
       this.lastActionState = this.actionState;
     }
-
-    //If attacking run hitbox chcks
-    let facing = this.directionFacing === "left" ? -1 : 1;
   }
 
+  //What to do when hit
   onHit() {
     this.currentFrame = 0;
     this.actionState = "gotHit";
-    this.moveDir = 0;
+    this.moveSpeed = 0
+    this.health -= 1
 
     this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3;
   }
@@ -1272,8 +1390,26 @@ class Mushroom extends Humanoid {
   }
 
   applyHit() {
+    //Player dodges it if mushroom is currently attacking and player is rolling
+    if (player.actionState === "rolling" && this.actionState === "attack") {
+      return;
+    }
+
+    //If player is blocking get stunned
+    if (player.actionState === "blocking" && this.directionFacing === player.directionFacing && this.actionState === "attack") {
+      this.actionState = "stun"
+      this.moveSpeed = 0
+      this.xVel = player.x < this.x ? this.xVel + 12 : this.xVel - 12;
+    }
+
+    //Dont damage when stunned
+    if (this.actionState === "stun") {
+      return
+    }
+
+    //Player hit on touch
     if (this.checkCollision(player)) {
-      if (millis() - player.lastHitTaken < 500) {
+      if (millis() - player.lastHitTaken < 1000) {
         return;
       }
 
@@ -1308,13 +1444,29 @@ class Mushroom extends Humanoid {
       this.actionState === "stunned" ||
       this.actionState === "attackWind" ||
       this.actionState === "attack" ||
-      this.actionState === "attackRecover") {
+      this.actionState === "attackRecover" ||
+      !this.active) {
       return
     }
 
     //First check if the player is directly in front or behind, and if they are attack them
     if (abs(this.x - player.x) < 100 && player.y + player.sizeY/2 > this.y - this.sizeY/2  ) {
-      this.moveDir = 0;
+      if (millis() - this.lastAttack < 1500) {
+        return
+      }
+
+      this.moveSpeed = 0;
+
+      //If player is behind mushroom
+      if (player.x > this.x) {
+        this.directionFacing = "left"
+        this.moveDir = -1
+      }
+      else if (player.x < this.x ) {
+        this.directionFacing = "right"
+        this.moveDir = 1
+      }
+
       this.actionState = "attackWind"
     }
   }
@@ -1433,7 +1585,8 @@ class Platform {
       item.directionFacing === "left" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 500 &&
-      !item.grounded && this.canClimb
+      !item.grounded && this.canClimb &&
+      !this.bottomBlock
     ) {
       
       //Skip ledge climb if this function is being applied to a hurt block
@@ -1452,7 +1605,8 @@ class Platform {
       item.directionFacing === "right" &&
       !item.attackStates.includes(item.actionState) &&
       millis() - item.lastLedgeClimb > 500 &&
-      !item.grounded && this.canClimb
+      !item.grounded && this.canClimb &&
+      !this.bottomBlock
     ) {
 
       console.log("Grabbed left");
@@ -1479,7 +1633,11 @@ class Platform {
 
       if (item.yVel > 0.2) {
         this.lastActionState = this.actionState;
-        item.actionState = "landing";
+        
+        if (item instanceof Player) {
+          item.actionState = "landing";
+        }
+        
         item.timeSinceLand = millis();
         itemHit = true;
         item.phasingBottom = false;
@@ -1516,16 +1674,13 @@ class Platform {
     ) {
       //If item runs into left of object
       if (
-        item.xVel >= 0 &&
         itemRight > this.left &&
-        itemLeft < this.left &&
-        item.xVel > 0
+        itemLeft < this.left 
       ) {
         item.x = this.left - item.sizeX / 2;
-        item.xVel = 0;
 
         if (item instanceof Mushroom) {
-          item.moveDir *= -1
+          item.directionFacing = item.directionFacing === "right" ? "left" : "right"
         }
 
         return true;
@@ -1533,16 +1688,14 @@ class Platform {
 
       //If item runs into right of object
       if (
-        item.xVel <= 0 &&
         itemLeft < this.right &&
-        itemRight > this.right &&
-        item.xVel < 0
+        itemRight > this.right
       ) {
         item.x = this.right + item.sizeX / 2;
-        item.xVel = 0;
 
         if (item instanceof Mushroom) {
-          item.moveDir *= -1
+          item.directionFacing = item.directionFacing === "left" ? "right" : "left"
+          console.log("TURNED AROUND")
         }
 
         return true;
@@ -1577,6 +1730,10 @@ class HurtBlock extends Platform{
       if (item instanceof Player) {
         item.respawn();
         item.gotHit();
+      }
+
+      if (item instanceof Mushroom) {
+        item.health = 0
       }
     }
   }
@@ -1902,7 +2059,7 @@ function setup() {
     }
   };
 
-  player = new Player(width / 2 , groundLevel - 250);
+  player = new Player(width / 2, groundLevel - 150);
   stage1();
   
   entities.push(player);
@@ -1964,7 +2121,7 @@ function draw() {
   checkGates();
   pop();
 
-  player.showGUI();
+  //player.showGUI();
 
   handleFade();
 }
@@ -2197,6 +2354,22 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   return items;
 }
 
+//Checks if there is a platform in a given location
+function checkIfPath(x, y) {
+  for (let plat of platforms) {
+    if (
+      x >= plat.left && 
+      x <= plat.right && 
+      y >= plat.top && 
+      y <= plat.bottom
+    ) {
+      return true; // Point is inside a platform
+    }
+  }
+
+  return false; // Point is in the air
+}
+
 //Clears all entities and platforms other then players
 function clearStage() {
   entities = [player];
@@ -2205,12 +2378,15 @@ function clearStage() {
 }
 
 function handleFade() {
+  //If we are fading out, fade in once done
   if (fade === "out") {
     fadeAmount += fadeRate;
     if (fadeAmount >= 255) {
       fade = "in";
     }
   }
+
+  //if we are fading in, return to none once done
   else if (fade === "in") {
     fadeAmount -= fadeRate;
     if (fadeAmount <= 0) {
@@ -2273,8 +2449,6 @@ function stage1() {
   //Death block underneath
   createSpikePit(width/2, groundLevel + 100, 242);
 
-  entities.push(new Mushroom(width/2 + 200, height/2, 0, 0));
-
   //Right cluster
   createStage(width / 2 + 355, groundLevel , 20, 10);
   createStage(width / 2 + 890, groundLevel , 12, 16);
@@ -2287,6 +2461,8 @@ function stage1() {
   brObjects.push(new breakableObject(width/2 + 2012, groundLevel - 175, 48, 48, crate, 3));
   gates.push(new Gate(width / 2 + 2000, groundLevel + 250, "stage1", "stage2", 125, 10, width/2 + 2000, groundLevel + 400));
 
+  //Mushroom enemy to patrol the gate
+  entities.push(new Mushroom(width/2 + 1850, groundLevel - 220, 0, 0));
 
   //Right wall
   createStage(width / 2 + 2300, groundLevel + 12 * 64 , 12, 95);
@@ -2311,20 +2487,31 @@ function stage1() {
 function stage2() {
   //Hillstone type backdrop
   createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80, true);
+  createStage(width / 2 + 2000, groundLevel + 12 * 64 , 6, 75, true, stoneStage);
+  createStage(width / 2 + 2350, groundLevel + 12 * 64 , 12, 27, true, stoneStage);
 
   //Stage bumps
-  createStage(width / 2 + 1950, groundLevel + 800, 6, 6);
+  createStage(width / 2 + 1950, groundLevel + 800, 6, 6, false, stoneStage);
 
   //Floor that you land on
-  createStage(width / 2 + 2200, groundLevel + 1000, 34, 20);
+  createStage(width / 2 + 2200, groundLevel + 1000, 34, 20, false, stoneStage);
   
   //Pillars that surround you as you drop
-  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 80, false, stoneStage);
-  createStage(width / 2 + 1500, groundLevel + 12 * 64 , 16, 80, false, stoneStage);
-  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 8, 80, false, stoneStage);
+  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 8, 100, false, stoneStage);
+  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 100, false, stoneStage);
+  createStage(width / 2 + 1500, groundLevel + 12 * 64 , 16, 100, false, stoneStage);
 
   //Background rock hills for effect
+  createStage(width / 2 + 1700, groundLevel + 12 * 64 , 10, 25, false, stoneStage);
   createStage(width / 2 + 1200, groundLevel + 12 * 64 , 26, 40, false, stoneStage);
-  createStage(width / 2 + 1700, groundLevel + 12 * 64 , 10, 15, false, stoneStage);
   createStage(width / 2 + 1250, groundLevel + 12 * 64 , 6, 35, false, stoneStage);
+
+  //Actual Stage (pit)
+  createStage(width / 2 + 3000, groundLevel + 1200, 34, 20, false, stoneStage)
+  createStage(width / 2 + 2500, groundLevel + 1000, 16, 30, false, stoneStage);
+  createStage(width / 2 + 3500, groundLevel + 1150, 20, 28, false, stoneStage);
+
+  entities.push(new Mushroom(width/2 + 3000, groundLevel - 220, 0, 0, "left"));
+  entities.push(new Mushroom(width/2 + 3050, groundLevel - 220, 0, 0, "right"));
+  entities.push(new Mushroom(width/2 + 3100, groundLevel - 220, 0, 0, "left"));
 }
