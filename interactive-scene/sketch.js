@@ -894,6 +894,10 @@ class Player extends Humanoid {
     if (millis() - this.lastBlock < this.blockCooldown) {
       return
     }
+
+    if (this.actionState.startsWith(this.currentWeapon) || millis() - this.lastHitTaken < 500) {
+      return
+    }
     this.lastBlock = millis();
     this.lastActionState === this.actionState;
     this.actionState = "blocking";
@@ -1204,7 +1208,7 @@ class Mushroom extends Humanoid {
 
       if (this.actionState === "attack" && this.currentFrame === 0) {
           setTimeout(() => {
-            if (this.actionState !== "stun") {
+            if (this.actionState === "attack") {
               this.actionState = "attackRecover"
             }
             
