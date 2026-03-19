@@ -989,7 +989,7 @@ class Mushroom extends Humanoid {
     this.sizeY = 27 * this.imageScale;
     this.sizeX = 20 * this.imageScale; 
     this.normalSize = 20 * this.imageScale; 
-    this.attackSize = this.sizeX + 25
+    this.attackSize = this.sizeX + 25;
     this.active = true;
     this.moveSpeed = 2;
     this.attackCooldown = 1500;
@@ -1230,12 +1230,12 @@ class Mushroom extends Humanoid {
           this.xVel = this.directionFacing === "right" ? -7 : 7;
           this.yVel = -3;
           this.lastAttack = millis();
-          this.sizeX = this.attackSize
+          this.sizeX = this.attackSize;
         }
 
         //if we are in the recovery stage of the attack, return to idle and reset settings
         else if (this.actionState === "attackRecover") {
-          this.sizeX = this.normalSize
+          this.sizeX = this.normalSize;
           setTimeout(() => {
             this.moveSpeed = 2;
           }, 500);
@@ -1291,7 +1291,7 @@ class Mushroom extends Humanoid {
 
     //Reset
     pop();
-    rect(this.x, this.y, this.sizeX, this.sizeY)
+    rect(this.x, this.y, this.sizeX, this.sizeY);
   }
 
   handleState() {
@@ -1331,7 +1331,7 @@ class Mushroom extends Humanoid {
     this.actionState = "gotHit";
     this.moveSpeed = 0;
     this.health -= 1;
-    this.sizeX = this.normalSize
+    this.sizeX = this.normalSize;
     this.xVel = player.x < this.x ? this.xVel + 3 : this.xVel - 3;
   }
 
@@ -1404,7 +1404,7 @@ class Mushroom extends Humanoid {
       this.actionState = "stun";
       this.moveSpeed = 0;
       this.xVel = player.x < this.x ? this.xVel + 12 : this.xVel - 12;
-      this.sizeX = this.normalSize
+      this.sizeX = this.normalSize;
     }
 
     //Dont damage when stunned

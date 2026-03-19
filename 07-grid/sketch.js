@@ -17,23 +17,28 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   squareSize = height/squareDimension;
 
-  let randomAmount = random(4, 16);
+  let randomAmount = random(4, 32);
+  let otherRandomAmount = random(4, 32);
 
-  for (let y = 0; y < randomAmount; y++) {
-    let aGrid = [];
-    for (let x = 0; x < randomAmount; x++) {
-      aGrid.push(random(1));
-    }
-    newGrid.push(aGrid);
-  }
+  randomizeGrid(randomAmount, otherRandomAmount);
 
   squareSize = height/randomAmount;
   squareDimension = randomAmount;
 }
 
+function randomizeGrid(cols, rows) {
+  for (let y = 0; y < cols; y++) {
+    let aGrid = [];
+    for (let x = 0; x < rows; x++) {
+      aGrid.push(random(1));
+    }
+    newGrid.push(aGrid);
+  }
+}
+
 function draw() {
-  background(220);
   showGrid();
+
 }
 
 function showGrid() {
@@ -47,5 +52,23 @@ function showGrid() {
       }
       square(x * squareSize, y * squareSize, squareSize);
     }
+  }
+}
+
+function mousePressed() {
+  changeCell();
+}
+
+function changeCell() {
+  let x = Math.floor(mouseX/squareSize);
+  let y = Math.floor(mouseY/squareSize);
+
+  console.log(x, y);
+  if (newGrid[y][x] > 0.5) {
+    newGrid[y][x] = 0.4;
+  }
+
+  else{
+    newGrid[y][x] = 0.6;
   }
 }
