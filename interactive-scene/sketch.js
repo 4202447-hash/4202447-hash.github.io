@@ -20,6 +20,7 @@ const cameraBoxWith = 200;
 
 
 //Important Globals and arrays
+let inDevMode = false;
 let cameraX = -250;
 let cameraY = 0;
 let floorHeight = 48;
@@ -2527,4 +2528,26 @@ function stage2() {
   entities.push(new Mushroom(width/2 + 3000, groundLevel - 220, 0, 0, "left"));
   entities.push(new Mushroom(width/2 + 3050, groundLevel - 220, 0, 0, "right"));
   entities.push(new Mushroom(width/2 + 3100, groundLevel - 220, 0, 0, "left"));
+}
+
+//Grid based game portion of assignment
+function dev() {
+  //Clear everything
+  entities = [];
+  platforms = [];
+  brObjects = [];
+
+  
+}
+
+function displayDevConsole() {
+
+}
+
+function placeBlock() {
+
+}
+
+function makeGrid() {
+  
 }
