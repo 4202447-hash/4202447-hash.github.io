@@ -31,7 +31,7 @@ let gates = [];
 let stages;
 let currentStage = 0;
 let screenShake = 0;
-let mapScale = 1
+let mapScale = 1.7;
 
 //Variables specific for certain functions to run
 let fadeAmount = 0;
@@ -155,6 +155,9 @@ function preload() {
   emptyHeart = loadImage("GUI/emptyHeart.png");
 }
 
+//list of images
+let imageTable = {};
+
 //Platform tables
 let deadGrassPlatform;
 let stonePlatform;
@@ -170,7 +173,7 @@ let deadGrassRight;
 let deadGrassMid;
 
 //Grid configs
-let mapGrid = []
+let mapGrid = [];
 let cellSize = 24;
 let totalCols = 250;
 let totalRows = 250;
@@ -1507,6 +1510,7 @@ class Platform {
     this.canClimb = canClimb;
     this.bottomBlock = bottomBlock;
     this.cantCollide = cantCollide;
+
   }
 
   //Display platform with texture or fallback as rectangle
@@ -1521,11 +1525,11 @@ class Platform {
       for (let x = 0; x < this.sizeX; x += displasizeYX) {
         for (let y = 0; y < this.sizeY; y += displasizeYY){
 
-          let currentImage = this.img;
+          let currentImage = imageTable[this.img];
 
           //If we are tiling with several images to have corner blocks set current image to appropriate block
-          if (Array.isArray(this.img)) {
-            currentImage = x === 0 ? this.img[0] : x + displasizeYX >= this.sizeX ? this.img[2] : this.img[1];
+          if (currentImage.length > 1) {
+            currentImage = x === 0 ? currentImage[0] : x + displasizeYX >= this.sizeX ? currentImage[2] : currentImage[1];
           }
 
           let dW = Math.min(displasizeYX, this.sizeX - x); 
@@ -2078,10 +2082,42 @@ function setup() {
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
   stoneStage = [stoneStageL, stoneStageM, stoneStageR];
 
+  //Initalize image table so I can seperate text referance and actual image for JSON saving
+  imageTable = {
+  // Player Animations
+    playerIdleSheet, playerrollingSheet, playerJumpSheet, playerRunningSheet,
+    playerPunch1, playerPunch2, playerPunch3, playerSprintSheet,
+    playerUpwardPunch, playerLedgeSheet, playerDownSlam, playerBlock,
+
+    // Mushroom animations
+    mushroomAttack, mushroomDie, mushroomIdle, mushroomRun, 
+    mushroomStun, mushroomGotHit,
+
+    // Props and textures
+    deadGrassTexture, belowGrass, deadGrassPlatformM, deadGrassPlatformL,
+    deadGrassPlatformR, stonePlatformL, stonePlatformM, stonePlatformR,
+    dirtStageL, dirtStageR, dirtStageM, deadGrassStageL,
+    deadGrassStageM, deadGrassStageR, spikeUp, stoneStageL,
+    stoneStageR, stoneStageM,
+
+    //Tables
+    deadGrassPlatform, stonePlatform, dirtStage, deadGrassStage, stoneStage,
+
+
+    // Breakable objects
+    crate,
+
+    // Background
+    backgroundLayer1, backgroundLayer2, backgroundLayer3, backgroundLayerLight,
+
+    // GUI
+    redHeart, blueHeart, greenHeart, yellowHeart, emptyHeart
+  };
+
   //Initialzie blocks for dev mode and stage maker
-  deadGrassLeft = [24, 24, false, "grey", deadGrassStageL, 24, 24, true, false, false]
-  deadGrassMid = [24, 24, false, "grey", deadGrassStageM, 24, 24, true, false, false]
-  deadGrassRight = [24, 24, false, "grey", deadGrassStageR, 24, 24, true, false, false]
+  deadGrassLeft = [24, 24, false, "grey", deadGrassStageL, 24, 24, true, false, false];
+  deadGrassMid = [24, 24, false, "grey", deadGrassStageM, 24, 24, true, false, false];
+  deadGrassRight = [24, 24, false, "grey", deadGrassStageR, 24, 24, true, false, false];
 
   selected = deadGrassLeft;
 
@@ -2089,7 +2125,7 @@ function setup() {
   player = new Player(width / 2, groundLevel - 150);
   entities.push(player);
 
-  stage1();
+  stage3();
   
 }
 
@@ -2326,10 +2362,10 @@ function createStage(x, y, blocksWide, blocksTall, cantCollide, stage) {
   let grassH = 24; 
 
   if (!stage) {
-    stage = deadGrassStage;
+    stage = "deadGrassStage";
   }
 
-  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", dirtStage, 48, 48, true, true, cantCollide));
+  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", "dirtStage", 48, 48, true, true, cantCollide));
   platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", stage, 48, 48, true, false, cantCollide)); 
 }
 
@@ -2554,19 +2590,23 @@ function stage2() {
   entities.push(new Mushroom(width/2 + 3100, groundLevel - 220, 0, 0, "left"));
 }
 
+function stage3() {
+  createStage(width / 2, groundLevel + 1000, 34, 20, false, "deadGrassStage");
+}
+
 //Grid based game portion of assignment
 
 //Creates our grid
 function createGrid(cols, rows) {
-  let grid  = []
+  let grid  = [];
 
   for (let i = 0; i < cols; i++) {
-    grid[i] = []
+    grid[i] = [];
     for (let j = 0; j < rows; j++){
-      grid[i][j] = 0 //Unoccupied
+      grid[i][j] = 0; //Unoccupied
     }
   }
-  return grid
+  return grid;
 }
 
 function dev() {
@@ -2575,8 +2615,8 @@ function dev() {
   platforms = [];
   brObjects = [];
 
-  inDevMode = true
-  mapGrid = createGrid(totalCols, totalRows)
+  inDevMode = true;
+  mapGrid = createGrid(totalCols, totalRows);
 }
 
 function displayDevConsole() {
@@ -2585,42 +2625,42 @@ function displayDevConsole() {
 
 function displayBlock() {
   //We don't need to get worldX and what not here as it runs at the start of the draw loop before all the camera shifting
-  let worldX = (mouseX/mapScale) - cameraX
-  let worldY = (mouseY/mapScale) - cameraY
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  let drawX = (gridX * cellSize) + (cellSize/2);
-  let drawY = (gridY * cellSize) + (cellSize/2);
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
 
-  tint(255, 127)
-  image(selected[4], drawX, drawY, selected[0], selected[1])
+  tint(255, 127);
+  image(selected[4], drawX, drawY, selected[0], selected[1]);
   noTint();
 }
 
 function placeBlock() {
   //Get the position of the actual world relative to the camera
-  let worldX = (mouseX/mapScale) - cameraX
-  let worldY = (mouseY/mapScale) - cameraY
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
   if (mapGrid[gridX][gridY] === 1) {
-    return
+    return;
   }
 
   if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
     mapGrid[gridX][gridY] = 1; //Occupied
   }
 
-  let drawX = (gridX * cellSize) + (cellSize/2);
-  let drawY = (gridY * cellSize) + (cellSize/2);
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
 
-  platforms.push(new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]))
+  platforms.push(new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]));
 }
 
 function makeGrid() {
