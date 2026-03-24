@@ -18,9 +18,7 @@ const layer3Speed = 0.3;
 const backgroundY = 300;
 const cameraBoxWith = 200;
 
-
 //Important Globals and arrays
-let inDevMode = false;
 let cameraX = -250;
 let cameraY = 0;
 let floorHeight = 48;
@@ -33,6 +31,7 @@ let gates = [];
 let stages;
 let currentStage = 0;
 let screenShake = 0;
+let mapScale = 1
 
 //Variables specific for certain functions to run
 let fadeAmount = 0;
@@ -162,6 +161,23 @@ let stonePlatform;
 let dirtStage;
 let deadGrassStage;
 let stoneStage;
+
+//These variables are for the stage creater(grid part of the project)
+
+//Block presets
+let deadGrassLeft;
+let deadGrassRight;
+let deadGrassMid;
+
+//Grid configs
+let mapGrid = []
+let cellSize = 24;
+let totalCols = 250;
+let totalRows = 250;
+let createdStages = [];
+let selected;
+let inDevMode = false;
+
 
 //Humanoid class which includes anything all player/playerlike entities
 class Humanoid {
@@ -730,8 +746,6 @@ class Player extends Humanoid {
         }
       }
     }
-
-    //console.log(this.actionState);
   }
 
   //Check input buffers (tries to run the input)
@@ -2064,6 +2078,13 @@ function setup() {
   deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
   stoneStage = [stoneStageL, stoneStageM, stoneStageR];
 
+  //Initialzie blocks for dev mode and stage maker
+  deadGrassLeft = [24, 24, false, "grey", deadGrassStageL, 24, 24, true, false, false]
+  deadGrassMid = [24, 24, false, "grey", deadGrassStageM, 24, 24, true, false, false]
+  deadGrassRight = [24, 24, false, "grey", deadGrassStageR, 24, 24, true, false, false]
+
+  selected = deadGrassLeft;
+
   //Load player and stage
   player = new Player(width / 2, groundLevel - 150);
   entities.push(player);
@@ -2075,7 +2096,7 @@ function setup() {
 function draw() {
   background(245, 245, 220);
 
-  scale(1.7);
+  scale(mapScale);
   drawBackground();
 
   //Variable to see how long S has been held
@@ -2121,6 +2142,7 @@ function draw() {
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
   //Draw
+  displayBlock();
   drawAllPlatforms();
   drawAllEntities();
   drawAllBreakableObjects();
@@ -2167,6 +2189,8 @@ function keyReleased() {
 function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
+  
+  placeBlock();
 }
 
 //Helper function to draw small tower of oneway collision platforms
@@ -2531,21 +2555,72 @@ function stage2() {
 }
 
 //Grid based game portion of assignment
+
+//Creates our grid
+function createGrid(cols, rows) {
+  let grid  = []
+
+  for (let i = 0; i < cols; i++) {
+    grid[i] = []
+    for (let j = 0; j < rows; j++){
+      grid[i][j] = 0 //Unoccupied
+    }
+  }
+  return grid
+}
+
 function dev() {
   //Clear everything
   entities = [];
   platforms = [];
   brObjects = [];
 
-  
+  inDevMode = true
+  mapGrid = createGrid(totalCols, totalRows)
 }
 
 function displayDevConsole() {
 
 }
 
-function placeBlock() {
+function displayBlock() {
+  //We don't need to get worldX and what not here as it runs at the start of the draw loop before all the camera shifting
+  let worldX = (mouseX/mapScale) - cameraX
+  let worldY = (mouseY/mapScale) - cameraY
 
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  let drawX = (gridX * cellSize) + (cellSize/2);
+  let drawY = (gridY * cellSize) + (cellSize/2);
+
+  tint(255, 127)
+  image(selected[4], drawX, drawY, selected[0], selected[1])
+  noTint();
+}
+
+function placeBlock() {
+  //Get the position of the actual world relative to the camera
+  let worldX = (mouseX/mapScale) - cameraX
+  let worldY = (mouseY/mapScale) - cameraY
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  if (mapGrid[gridX][gridY] === 1) {
+    return
+  }
+
+  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
+    mapGrid[gridX][gridY] = 1; //Occupied
+  }
+
+  let drawX = (gridX * cellSize) + (cellSize/2);
+  let drawY = (gridY * cellSize) + (cellSize/2);
+
+  platforms.push(new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]))
 }
 
 function makeGrid() {
