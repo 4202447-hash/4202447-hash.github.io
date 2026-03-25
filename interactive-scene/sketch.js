@@ -17,6 +17,7 @@ const layer2Speed = 0.2;
 const layer3Speed = 0.3;
 const backgroundY = 300;
 const cameraBoxWith = 200;
+const cameraMoveAmount = 3;
 
 //Important Globals and arrays
 let cameraX = -250;
@@ -88,6 +89,7 @@ let blueHeart;
 let greenHeart;
 let yellowHeart;
 let emptyHeart;
+
 
 let hearts;
 
@@ -181,6 +183,9 @@ let totalRows = 250;
 let createdStages = [];
 let selected;
 let inDevMode = false;
+
+//Define our library of objects
+let objectLibrary;
 
 
 //Humanoid class which includes anything all player/playerlike entities
@@ -2077,21 +2082,23 @@ function draw() {
   applyAllPhysics();
   checkAllcollisions();
 
-  //Follow player with camera
-  let targetX = width / 2 - player.x - 250 ;
-  let targetY = height / 2 - player.y - 100; 
+  if (inDevMode === false){
+    //Follow player with camera
+    let targetX = width / 2 - player.x - 250 ;
+    let targetY = height / 2 - player.y - 100; 
 
 
-  if (sHoldTime > 500 && player.grounded) {
-    let lookDownShift = 75; 
-    targetY -= lookDownShift;
+    if (sHoldTime > 500 && player.grounded) {
+      let lookDownShift = 75; 
+      targetY -= lookDownShift;
+    }
+
+    let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
+
+    //Lerp camera to target
+    cameraX = lerp(cameraX, targetX, 0.1);
+    cameraY = lerp(cameraY, targetY, currentLerp);
   }
-
-  let currentLerp = sHoldTime > 500 ? 0.05 : 0.2;
-
-  //Lerp camera to target ONLY if we are not in the process of fading the screen black 
-  cameraX = lerp(cameraX, targetX, 0.1);
-  cameraY = lerp(cameraY, targetY, currentLerp);
 
   push();
 
@@ -2113,8 +2120,10 @@ function draw() {
 
   //Draw
 
+  //If in dev mode allow player to move camera with WASD and display block hologram
   if (inDevMode){
     displayBlock();
+    moveCamera();
   }
   
   drawAllPlatforms();
@@ -2536,9 +2545,6 @@ function stage3() {
 
 //Grid based game portion of assignment
 
-//Define our library of objects
-let objectLibrary 
-
 //Creates our grid
 function createGrid(cols, rows) {
   let grid  = [];
@@ -2580,7 +2586,7 @@ function displayBlock() {
 
   tint(255, 127);
 
-  let displayImage = imageTable[selected[4]]
+  let displayImage = imageTable[selected[4]];
 
   image(displayImage, drawX, drawY, selected[0], selected[1]);
   noTint();
@@ -2609,10 +2615,20 @@ function placeBlock() {
   platforms.push(new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]));
 }
 
-function makeGrid() {
-  
+function moveCamera() {
+  if (keyIsDown(65)) {
+    cameraX += cameraMoveAmount;
+  }
+  if (keyIsDown(68)) {
+    cameraX -= cameraMoveAmount;
+  }
+  if (keyIsDown(87)) {
+    cameraY += cameraMoveAmount;
+  }
+  if (keyIsDown(83)) {
+    cameraY -= cameraMoveAmount;
+  }
 }
-
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -2672,10 +2688,10 @@ function setup() {
 
   //Make table containing all object presets
   let objectLibrary = [
-  deadGrassLeft,
-  deadGrassMid,
-  deadGrassRight
-  ]
+    deadGrassLeft,
+    deadGrassMid,
+    deadGrassRight
+  ];
 
   selected = deadGrassLeft;
 
@@ -2687,32 +2703,36 @@ function setup() {
   
 
   //Setting up our sidebar for the devmode
-  sideBar = createDiv('')
-  sideBar.position(width * 0.05, height * 0.25)
-  sideBar.size(150, height/2)
-  sideBar.style('background', "#7a0a0a92")
-  sideBar.style("overflow-y", "scroll") //Makes it scrollable
-  sideBar.style("display", "flex") //Meets size of contents
-  sideBar.style("flex-direction", "column")
-  sideBar.style("padding", "10px")
-  sideBar.style("align-items", "center")
-  sideBar.style('gap', '10px')
+  sideBar = createDiv('');
+  sideBar.position(width * 0.05, height * 0.25);
+  sideBar.size(150, height/2);
+  sideBar.style('background', "#7a0a0a92");
+  sideBar.style("overflow-y", "scroll"); //Makes it scrollable
+  sideBar.style("display", "flex"); //Meets size of contents
+  sideBar.style("flex-direction", "column");
+  sideBar.style("padding", "10px");
+  sideBar.style("align-items", "center");
+  sideBar.style('gap', '10px');
 
   for (let object of objectLibrary) {
-    button = createButton("")
-    button.parent(sideBar)
-    button.size(100, 100)
-    button.style('background-color', "transparent")
+    button = createButton("");
+    button.parent(sideBar);
+    button.size(100, 100);
+    button.style('background-color', "transparent");
     button.style('border', 'none');
     
     //Get the corresponding image for our button and convert to form which the button can use
-    console.log(object)
-    let imageItem = imageTable[object[4]]
-    let convertedData = imageItem.canvas.toDataURL()
+    console.log(object);
+    let imageItem = imageTable[object[4]];
+    let convertedData = imageItem.canvas.toDataURL();
 
     //Add image
-    button.style('background-image', `url(${convertedData})`)
+    button.style('background-image', `url(${convertedData})`);
     button.style('background-size', 'cover');
     button.style('image-rendering', 'pixelated');
+
+    button.mousePressed(function () {
+      selected = object;
+    })
   }
 }

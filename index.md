@@ -9,8 +9,9 @@
 - [Perlin Noise](06-noise)
 - [2D grid](07-grid)
 - [Game of Life](08-life)
+- [Character in Grid](09-character)
 
 ## Assignments
 - [Interactive Scene](interactive-scene)
 - [Array Assignment](interactive-scene)
-- [Grid Assignment] (interactive-scene)
+- [Grid Assignment](interactive-scene)
