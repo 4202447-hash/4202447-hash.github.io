@@ -171,6 +171,7 @@ let stoneStage;
 let deadGrassLeft;
 let deadGrassRight;
 let deadGrassMid;
+let sideBar;
 
 //Grid configs
 let mapGrid = [];
@@ -1528,7 +1529,7 @@ class Platform {
           let currentImage = imageTable[this.img];
 
           //If we are tiling with several images to have corner blocks set current image to appropriate block
-          if (currentImage.length > 1) {
+          if (Array.isArray(currentImage)) {
             currentImage = x === 0 ? currentImage[0] : x + displasizeYX >= this.sizeX ? currentImage[2] : currentImage[1];
           }
 
@@ -2062,73 +2063,6 @@ class Gate {
   }
 }
 
-
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-
-  groundLevel = height - floorHeight;
-  
-  rectMode(CENTER);
-  imageMode(CENTER);
-  noSmooth();
-
-  console.log("Image Width: " + playerIdleSheet.width);
-  console.log("Image Height: " + playerIdleSheet.height);
-
-  //Initialize decal tables for platforms
-  deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR];
-  stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR];
-  dirtStage = [dirtStageL, dirtStageM, dirtStageR];
-  deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
-  stoneStage = [stoneStageL, stoneStageM, stoneStageR];
-
-  //Initalize image table so I can seperate text referance and actual image for JSON saving
-  imageTable = {
-  // Player Animations
-    playerIdleSheet, playerrollingSheet, playerJumpSheet, playerRunningSheet,
-    playerPunch1, playerPunch2, playerPunch3, playerSprintSheet,
-    playerUpwardPunch, playerLedgeSheet, playerDownSlam, playerBlock,
-
-    // Mushroom animations
-    mushroomAttack, mushroomDie, mushroomIdle, mushroomRun, 
-    mushroomStun, mushroomGotHit,
-
-    // Props and textures
-    deadGrassTexture, belowGrass, deadGrassPlatformM, deadGrassPlatformL,
-    deadGrassPlatformR, stonePlatformL, stonePlatformM, stonePlatformR,
-    dirtStageL, dirtStageR, dirtStageM, deadGrassStageL,
-    deadGrassStageM, deadGrassStageR, spikeUp, stoneStageL,
-    stoneStageR, stoneStageM,
-
-    //Tables
-    deadGrassPlatform, stonePlatform, dirtStage, deadGrassStage, stoneStage,
-
-
-    // Breakable objects
-    crate,
-
-    // Background
-    backgroundLayer1, backgroundLayer2, backgroundLayer3, backgroundLayerLight,
-
-    // GUI
-    redHeart, blueHeart, greenHeart, yellowHeart, emptyHeart
-  };
-
-  //Initialzie blocks for dev mode and stage maker
-  deadGrassLeft = [24, 24, false, "grey", deadGrassStageL, 24, 24, true, false, false];
-  deadGrassMid = [24, 24, false, "grey", deadGrassStageM, 24, 24, true, false, false];
-  deadGrassRight = [24, 24, false, "grey", deadGrassStageR, 24, 24, true, false, false];
-
-  selected = deadGrassLeft;
-
-  //Load player and stage
-  player = new Player(width / 2, groundLevel - 150);
-  entities.push(player);
-
-  stage3();
-  
-}
-
 function draw() {
   background(245, 245, 220);
 
@@ -2178,7 +2112,11 @@ function draw() {
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
   //Draw
-  displayBlock();
+
+  if (inDevMode){
+    displayBlock();
+  }
+  
   drawAllPlatforms();
   drawAllEntities();
   drawAllBreakableObjects();
@@ -2226,7 +2164,9 @@ function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
   
-  placeBlock();
+  if (inDevMode) {
+    placeBlock();
+  }
 }
 
 //Helper function to draw small tower of oneway collision platforms
@@ -2596,6 +2536,9 @@ function stage3() {
 
 //Grid based game portion of assignment
 
+//Define our library of objects
+let objectLibrary 
+
 //Creates our grid
 function createGrid(cols, rows) {
   let grid  = [];
@@ -2636,7 +2579,10 @@ function displayBlock() {
   let drawY = gridY * cellSize + cellSize/2;
 
   tint(255, 127);
-  image(selected[4], drawX, drawY, selected[0], selected[1]);
+
+  let displayImage = imageTable[selected[4]]
+
+  image(displayImage, drawX, drawY, selected[0], selected[1]);
   noTint();
 }
 
@@ -2665,4 +2611,108 @@ function placeBlock() {
 
 function makeGrid() {
   
+}
+
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+
+  groundLevel = height - floorHeight;
+  
+  rectMode(CENTER);
+  imageMode(CENTER);
+  noSmooth();
+
+  console.log("Image Width: " + playerIdleSheet.width);
+  console.log("Image Height: " + playerIdleSheet.height);
+
+  //Initialize decal tables for platforms
+  deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR];
+  stonePlatform = [stonePlatformL, stonePlatformM, stonePlatformR];
+  dirtStage = [dirtStageL, dirtStageM, dirtStageR];
+  deadGrassStage = [deadGrassStageL, deadGrassStageM, deadGrassStageR];
+  stoneStage = [stoneStageL, stoneStageM, stoneStageR];
+
+  //Initalize image table so I can seperate text referance and actual image for JSON saving
+  imageTable = {
+  // Player Animations
+    playerIdleSheet, playerrollingSheet, playerJumpSheet, playerRunningSheet,
+    playerPunch1, playerPunch2, playerPunch3, playerSprintSheet,
+    playerUpwardPunch, playerLedgeSheet, playerDownSlam, playerBlock,
+
+    // Mushroom animations
+    mushroomAttack, mushroomDie, mushroomIdle, mushroomRun, 
+    mushroomStun, mushroomGotHit,
+
+    // Props and textures
+    deadGrassTexture, belowGrass, deadGrassPlatformM, deadGrassPlatformL,
+    deadGrassPlatformR, stonePlatformL, stonePlatformM, stonePlatformR,
+    dirtStageL, dirtStageR, dirtStageM, deadGrassStageL,
+    deadGrassStageM, deadGrassStageR, spikeUp, stoneStageL,
+    stoneStageR, stoneStageM,
+
+    //Tables
+    deadGrassPlatform, stonePlatform, dirtStage, deadGrassStage, stoneStage,
+
+
+    // Breakable objects
+    crate,
+
+    // Background
+    backgroundLayer1, backgroundLayer2, backgroundLayer3, backgroundLayerLight,
+
+    // GUI
+    redHeart, blueHeart, greenHeart, yellowHeart, emptyHeart
+  };
+
+  //Initialzie blocks for dev mode and stage maker
+  deadGrassLeft = [24, 24, false, "grey", "deadGrassStageL", 24, 24, true, false, false];
+  deadGrassMid = [24, 24, false, "grey", "deadGrassStageM", 24, 24, true, false, false];
+  deadGrassRight = [24, 24, false, "grey", "deadGrassStageR", 24, 24, true, false, false];
+
+  //Make table containing all object presets
+  let objectLibrary = [
+  deadGrassLeft,
+  deadGrassMid,
+  deadGrassRight
+  ]
+
+  selected = deadGrassLeft;
+
+  //Load player and stage
+  player = new Player(width / 2, groundLevel - 150);
+  entities.push(player);
+
+  stage3();
+  
+
+  //Setting up our sidebar for the devmode
+  sideBar = createDiv('')
+  sideBar.position(width * 0.05, height * 0.25)
+  sideBar.size(150, height/2)
+  sideBar.style('background', "#7a0a0a92")
+  sideBar.style("overflow-y", "scroll") //Makes it scrollable
+  sideBar.style("display", "flex") //Meets size of contents
+  sideBar.style("flex-direction", "column")
+  sideBar.style("padding", "10px")
+  sideBar.style("align-items", "center")
+  sideBar.style('gap', '10px')
+
+  for (let object of objectLibrary) {
+    button = createButton("")
+    button.parent(sideBar)
+    button.size(100, 100)
+    button.style('background-color', "transparent")
+    button.style('border', 'none');
+    
+    //Get the corresponding image for our button and convert to form which the button can use
+    console.log(object)
+    let imageItem = imageTable[object[4]]
+    let convertedData = imageItem.canvas.toDataURL()
+
+    //Add image
+    button.style('background-image', `url(${convertedData})`)
+    button.style('background-size', 'cover');
+    button.style('image-rendering', 'pixelated');
+  }
 }
