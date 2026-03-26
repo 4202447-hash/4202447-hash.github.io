@@ -9,15 +9,16 @@
 
 
 //Constants
-const gravitationalForce = 0.3;
-const frictionalForce = 0.5;
-const footOffset = 2;
-const layer1Speed = 0.1;
-const layer2Speed = 0.2;
-const layer3Speed = 0.3;
-const backgroundY = 300;
-const cameraBoxWith = 200;
-const cameraMoveAmount = 3;
+const GRAVITATIONALFORCE = 0.3;
+const FRICTIONALFORCE = 0.5;
+const FOOTOFFSET = 2;
+const LAYER1SPEED = 0.1;
+const LAYER2SPEED = 0.2;
+const LAYER3SPEED = 0.3;
+const BACKGROUNDY = 300;
+const CAMERABOXWIDTH = 200;
+const CAMERAMOVEAMOUNT = 3;
+const NOBLOCK = 0;
 
 //Important Globals and arrays
 let cameraX = -250;
@@ -38,6 +39,7 @@ let mapScale = 1.7;
 let fadeAmount = 0;
 let fade = "none";
 let fadeRate = 10;
+
 
 //Animations and sprites
 let playerIdleSheet;
@@ -173,13 +175,16 @@ let stoneStage;
 let deadGrassLeft;
 let deadGrassRight;
 let deadGrassMid;
+let dirtLeft;
+let dirtRight;
+let dirtMid;
 let sideBar;
 
 //Grid configs
 let mapGrid = [];
 let cellSize = 24;
-let totalCols = 250;
-let totalRows = 250;
+let totalCols = 100;
+let totalRows = 100;
 let createdStages = [];
 let selected;
 let inDevMode = false;
@@ -599,7 +604,7 @@ class Player extends Humanoid {
 
     //Apply gravity
     if (!this.grounded && this.actionState) {
-      this.yVel += gravitationalForce;
+      this.yVel += GRAVITATIONALFORCE;
     }
 
     this.y += this.yVel;
@@ -608,8 +613,8 @@ class Player extends Humanoid {
     //Apply friction if not rolling, 1/4 in air
     if ((this.moveDir === 0 || this.moveSpeed === 0) && this.actionState !== "rolling") {
       let currentFriction = this.grounded
-        ? frictionalForce
-        : frictionalForce / 4;
+        ? FRICTIONALFORCE
+        : FRICTIONALFORCE / 4;
 
       if (abs(this.xVel) <= currentFriction) {
         this.xVel = 0;
@@ -928,7 +933,6 @@ class Player extends Humanoid {
 
   //Function which respawns player at last grounded area, should be different from full reset which returns player to last checkpoint
   respawn() {
-    console.log(this.lastCheckpointX, this.lastCheckpointY);
     this.x = this.lastCheckpointX;
     this.y = this.lastCheckpointY - 5;
     this.xVel = 0;
@@ -1184,7 +1188,7 @@ class Mushroom extends Humanoid {
 
     //Apply gravity
     if (!this.grounded && this.actionState) {
-      this.yVel += gravitationalForce;
+      this.yVel += GRAVITATIONALFORCE;
     }
 
     this.y += this.yVel;
@@ -1193,8 +1197,8 @@ class Mushroom extends Humanoid {
     //Apply friction if not rolling, 1/4 in air
     if ((this.moveDir === 0 || this.moveSpeed === 0) && this.actionState !== "rolling") {
       let currentFriction = this.grounded
-        ? frictionalForce
-        : frictionalForce / 4;
+        ? FRICTIONALFORCE
+        : FRICTIONALFORCE / 4;
 
       if (abs(this.xVel) <= currentFriction) {
         this.xVel = 0;
@@ -1385,8 +1389,8 @@ class Mushroom extends Humanoid {
     }
 
     if (
-      itemBottom > this.top + footOffset &&
-      itemTop < this.bottom - footOffset
+      itemBottom > this.top + FOOTOFFSET &&
+      itemTop < this.bottom - FOOTOFFSET
     ) {
       //If item runs into left of object
       if (
@@ -1639,14 +1643,11 @@ class Platform {
       !this.bottomBlock
     ) {
 
-      console.log("Grabbed left");
-
       if (this instanceof HurtBlock) {
         return true;
       }
 
       this.snapToLedge(item, "left");
-      console.log("Grabbed ledge");
     }
 
     //Floor check
@@ -1699,8 +1700,8 @@ class Platform {
     }
 
     if (
-      itemBottom > this.top + footOffset &&
-      itemTop < this.bottom - footOffset
+      itemBottom > this.top + FOOTOFFSET &&
+      itemTop < this.bottom - FOOTOFFSET
     ) {
       //If item runs into left of object
       if (
@@ -1725,7 +1726,6 @@ class Platform {
 
         if (item instanceof Mushroom && item.grounded) {
           item.directionFacing = item.directionFacing === "left" ? "right" : "left";
-          console.log("TURNED AROUND");
         }
 
         return true;
@@ -1740,7 +1740,6 @@ class Platform {
         itemTop >= this.top
       ) {
         item.y = this.bottom + item.sizeY / 2;
-        console.log("hit two way platform");
         item.yVel = 0;
         itemHit = true;
       }
@@ -1820,7 +1819,7 @@ class Debris{
     this.angle += this.rotationSpeed;
     
     if (!this.grounded) {
-      this.yVel += gravitationalForce;
+      this.yVel += GRAVITATIONALFORCE;
     }
     else {
       [
@@ -1843,7 +1842,7 @@ class Debris{
   }
 }
 
-class breakableObject {
+class reakableObject {
   constructor(x, y, sizeX, sizeY, mainImg, health) {
     this.x = x;
     this.y = y;
@@ -1939,8 +1938,8 @@ class breakableObject {
     }
 
     if (
-      itemBottom > this.top + footOffset &&
-      itemTop < this.bottom - footOffset
+      itemBottom > this.top + FOOTOFFSET &&
+      itemTop < this.bottom - FOOTOFFSET
     ) {
       //If item runs into left of object
       if (
@@ -2015,8 +2014,8 @@ class Gate {
     }
 
     if (
-      itemBottom > this.top + footOffset &&
-      itemTop < this.bottom - footOffset
+      itemBottom > this.top + FOOTOFFSET &&
+      itemTop < this.bottom - FOOTOFFSET
     ) {
       //If item runs into left of object
       if (
@@ -2058,7 +2057,6 @@ class Gate {
       setTimeout(() => {
         player.yVel = 0;
         clearStage();
-        console.log(this.to);
         window[this.to]();
         player.x = this.toX;
         player.y = this.toY;
@@ -2077,10 +2075,6 @@ function draw() {
   //Variable to see how long S has been held
   let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
 
-  //Run all non draw related functions
-  updateAllEntites();
-  applyAllPhysics();
-  checkAllcollisions();
 
   if (inDevMode === false){
     //Follow player with camera
@@ -2098,6 +2092,26 @@ function draw() {
     //Lerp camera to target
     cameraX = lerp(cameraX, targetX, 0.1);
     cameraY = lerp(cameraY, targetY, currentLerp);
+
+    //Hide away sidebar
+    sideBar.position(-1000, -1000);
+
+    //Run all non draw related functions
+    updateAllEntites();
+    applyAllPhysics();
+    checkAllcollisions();
+  }
+  else {
+    //Allow player to move around world with WASD
+    moveCamera();
+
+    //Display sidebar if in devmode
+    sideBar.position(width * 0.05, height * 0.25);
+
+    //If the mouse is pressed place your objects
+    if (mouseIsPressed) {
+      placeObject();
+    }
   }
 
   push();
@@ -2118,12 +2132,9 @@ function draw() {
 
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
-  //Draw
-
-  //If in dev mode allow player to move camera with WASD and display block hologram
-  if (inDevMode){
+  if (inDevMode) {
+    //Show transparent block to show where your block position is (position in the drawloop needs to be here)
     displayBlock();
-    moveCamera();
   }
   
   drawAllPlatforms();
@@ -2172,10 +2183,6 @@ function keyReleased() {
 function mousePressed() {
   player.hit();
   player.inputBuffers.punch = millis();
-  
-  if (inDevMode) {
-    placeBlock();
-  }
 }
 
 //Helper function to draw small tower of oneway collision platforms
@@ -2240,6 +2247,15 @@ function drawAllPlatforms() {
   for (let platform of platforms) {
     platform.display();
   }
+
+  for (let x = 0; x < totalRows; x++) {
+    for (let y = 0; y < totalCols; y++) {
+      if (mapGrid[x] && mapGrid[x][y]) {
+        mapGrid[x][y].display();
+      }
+      
+    }
+  }
 }
 
 //Draw all entites
@@ -2271,36 +2287,36 @@ function windowResized() {
 //function to draw a parallex background 
 function drawBackground() {
   //adjust respective layers speed to change speed at which image moves
-  let bgX = cameraX * layer1Speed % width;
+  let bgX = cameraX * LAYER1SPEED % width;
 
-  image(backgroundLayer1, bgX, backgroundY, width/2, height);
-  image(backgroundLayer1, bgX + width/2, backgroundY , width/2, height);
-  image(backgroundLayer1, bgX + width, backgroundY , width/2, height);
-  image(backgroundLayer1, bgX - width/2, backgroundY , width/2, height);
-  image(backgroundLayer1, bgX - width, backgroundY , width/2, height);
+  image(backgroundLayer1, bgX, BACKGROUNDY, width/2, height);
+  image(backgroundLayer1, bgX + width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer1, bgX + width, BACKGROUNDY , width/2, height);
+  image(backgroundLayer1, bgX - width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer1, bgX - width, BACKGROUNDY , width/2, height);
 
   //The aditional offset is because the light is slightly off where I want it
   let offset = height * 0.04;
 
-  image(backgroundLayerLight, bgX, backgroundY + offset, width/2, height);
-  image(backgroundLayerLight, bgX + width/2, backgroundY + offset , width/2, height);
-  image(backgroundLayerLight, bgX + width, backgroundY + offset , width/2, height);
-  image(backgroundLayerLight, bgX - width/2, backgroundY + offset , width/2, height);
-  image(backgroundLayerLight, bgX - width, backgroundY + offset , width/2, height);
+  image(backgroundLayerLight, bgX, BACKGROUNDY + offset, width/2, height);
+  image(backgroundLayerLight, bgX + width/2, BACKGROUNDY + offset , width/2, height);
+  image(backgroundLayerLight, bgX + width, BACKGROUNDY + offset , width/2, height);
+  image(backgroundLayerLight, bgX - width/2, BACKGROUNDY + offset , width/2, height);
+  image(backgroundLayerLight, bgX - width, BACKGROUNDY + offset , width/2, height);
 
-  bgX = cameraX * layer2Speed % width;
-  image(backgroundLayer2, bgX, backgroundY, width/2, height);
-  image(backgroundLayer2, bgX + width/2, backgroundY , width/2, height);
-  image(backgroundLayer2, bgX + width, backgroundY , width/2, height);
-  image(backgroundLayer2, bgX - width/2, backgroundY , width/2, height);
-  image(backgroundLayer2, bgX - width, backgroundY , width/2, height);
+  bgX = cameraX * LAYER2SPEED % width;
+  image(backgroundLayer2, bgX, BACKGROUNDY, width/2, height);
+  image(backgroundLayer2, bgX + width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer2, bgX + width, BACKGROUNDY , width/2, height);
+  image(backgroundLayer2, bgX - width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer2, bgX - width, BACKGROUNDY , width/2, height);
 
-  bgX = cameraX * layer3Speed % width;
-  image(backgroundLayer3, bgX, backgroundY, width/2, height);
-  image(backgroundLayer3, bgX + width/2, backgroundY , width/2, height);
-  image(backgroundLayer3, bgX + width, backgroundY , width/2, height);
-  image(backgroundLayer3, bgX - width/2, backgroundY , width/2, height);
-  image(backgroundLayer3, bgX - width, backgroundY , width/2, height);
+  bgX = cameraX * LAYER3SPEED % width;
+  image(backgroundLayer3, bgX, BACKGROUNDY, width/2, height);
+  image(backgroundLayer3, bgX + width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer3, bgX + width, BACKGROUNDY , width/2, height);
+  image(backgroundLayer3, bgX - width/2, BACKGROUNDY , width/2, height);
+  image(backgroundLayer3, bgX - width, BACKGROUNDY , width/2, height);
 
 
 }
@@ -2330,7 +2346,7 @@ function createPlatform(x, y, blocksWide, theTexture) {
 
 //Creates breakable object
 function createBreakableObject(x, y, blocksWide, blocksTall, health) {
-  brObjects.push(new breakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health));
+  brObjects.push(new BreakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health));
 }
 
 //Gets item in an area (for a hitbox type function)
@@ -2480,8 +2496,8 @@ function stage1() {
   createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80);
  
   //Gate to stage2 along with barrier in the way
-  brObjects.push(new breakableObject(width/2 + 1965, groundLevel - 175, 48, 48, crate, 3));
-  brObjects.push(new breakableObject(width/2 + 2012, groundLevel - 175, 48, 48, crate, 3));
+  brObjects.push(new BreakableObject(width/2 + 1965, groundLevel - 175, 48, 48, crate, 3));
+  brObjects.push(new BreakableObject(width/2 + 2012, groundLevel - 175, 48, 48, crate, 3));
   gates.push(new Gate(width / 2 + 2000, groundLevel + 250, "stage1", "stage2", 125, 10, width/2 + 2000, groundLevel + 400));
 
   //Mushroom enemy to patrol the gate
@@ -2508,6 +2524,8 @@ function stage1() {
 }
 
 function stage2() {
+  currentStage = "stage2";
+
   //Hillstone type backdrop
   createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80, true);
   createStage(width / 2 + 2000, groundLevel + 12 * 64 , 6, 75, true, stoneStage);
@@ -2540,6 +2558,8 @@ function stage2() {
 }
 
 function stage3() {
+  currentStage = "stage3";
+
   createStage(width / 2, groundLevel + 1000, 34, 20, false, "deadGrassStage");
 }
 
@@ -2564,12 +2584,13 @@ function dev() {
   platforms = [];
   brObjects = [];
 
-  inDevMode = true;
+  inDevMode = !inDevMode;
   mapGrid = createGrid(totalCols, totalRows);
-}
 
-function displayDevConsole() {
-
+  if (!inDevMode) {
+    window[currentStage]();
+    entities.push(player);
+  }
 }
 
 function displayBlock() {
@@ -2580,6 +2601,10 @@ function displayBlock() {
   //Position on grid
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
+
+  if (!mapGrid[gridX]) {
+    return;
+  }
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
@@ -2601,9 +2626,11 @@ function placeBlock() {
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  if (mapGrid[gridX][gridY] === 1) {
+  //If theres no grid position or if that block is occupied exit early
+  if (!mapGrid[gridX] || mapGrid[gridX][gridY] !== NOBLOCK) {
     return;
   }
+
 
   if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
     mapGrid[gridX][gridY] = 1; //Occupied
@@ -2612,21 +2639,69 @@ function placeBlock() {
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
-  platforms.push(new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]));
+  //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
+  //The mapgrid array is using the new system 
+
+  let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
+  mapGrid[gridX][gridY] = platform;
+  
+}
+
+function placePlayer(){
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  //If theres no grid position or if that block is occupied exit early
+  if (!mapGrid[gridX] || mapGrid[gridX][gridY] !== NOBLOCK) {
+    return;
+  }
+
+
+  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
+    mapGrid[gridX][gridY] = 1; //Occupied
+  }
+
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
+
+  player.x = drawX;
+  player.y = drawY;
+
+  //Occupy a 2x6 section of the map for the player and return the player to the entities table
+  mapGrid[gridX][gridY] = "player";
+  entities.push(player);
+}
+
+
+function placeObject() {
+  if (inDevMode) {
+    //Check what type of object this is
+    if (selected[10] === "block") {
+      placeBlock();
+    }
+
+    if (selected[10] === "player") {
+      placePlayer;
+    }
+  }
 }
 
 function moveCamera() {
   if (keyIsDown(65)) {
-    cameraX += cameraMoveAmount;
+    cameraX += CAMERAMOVEAMOUNT;
   }
   if (keyIsDown(68)) {
-    cameraX -= cameraMoveAmount;
+    cameraX -= CAMERAMOVEAMOUNT;
   }
   if (keyIsDown(87)) {
-    cameraY += cameraMoveAmount;
+    cameraY += CAMERAMOVEAMOUNT;
   }
   if (keyIsDown(83)) {
-    cameraY -= cameraMoveAmount;
+    cameraY -= CAMERAMOVEAMOUNT;
   }
 }
 
@@ -2638,9 +2713,6 @@ function setup() {
   rectMode(CENTER);
   imageMode(CENTER);
   noSmooth();
-
-  console.log("Image Width: " + playerIdleSheet.width);
-  console.log("Image Height: " + playerIdleSheet.height);
 
   //Initialize decal tables for platforms
   deadGrassPlatform = [deadGrassPlatformL, deadGrassPlatformM, deadGrassPlatformR];
@@ -2680,17 +2752,26 @@ function setup() {
     // GUI
     redHeart, blueHeart, greenHeart, yellowHeart, emptyHeart
   };
-
+  let playerObject;
+  
   //Initialzie blocks for dev mode and stage maker
-  deadGrassLeft = [24, 24, false, "grey", "deadGrassStageL", 24, 24, true, false, false];
-  deadGrassMid = [24, 24, false, "grey", "deadGrassStageM", 24, 24, true, false, false];
-  deadGrassRight = [24, 24, false, "grey", "deadGrassStageR", 24, 24, true, false, false];
+  deadGrassLeft = [24, 24, false, "grey", "deadGrassStageL", 24, 24, true, false, false, "block"];
+  deadGrassMid = [24, 24, false, "grey", "deadGrassStageM", 24, 24, true, false, false, "block"];
+  deadGrassRight = [24, 24, false, "grey", "deadGrassStageR", 24, 24, true, false, false, "block"];
+  dirtLeft = [24, 24, false, "brown", "dirtStageL", 24, 24, true, true, false, "block"];
+  dirtRight = [24, 24, false, "brown", "dirtStageR", 24, 24, true, true, false, "block"];
+  dirtMid = [24, 24, false, "brown", "dirtStageM", 24, 24, true, true, false, "block"];
+  playerObject = [null, null, null, null, "deadGrassStageL", null, null, null, "player"]
 
   //Make table containing all object presets
   let objectLibrary = [
     deadGrassLeft,
     deadGrassMid,
-    deadGrassRight
+    deadGrassRight,
+    dirtLeft,
+    dirtRight,
+    dirtMid,
+    playerObject
   ];
 
   selected = deadGrassLeft;
@@ -2707,11 +2788,11 @@ function setup() {
   sideBar.position(width * 0.05, height * 0.25);
   sideBar.size(150, height/2);
   sideBar.style('background', "#7a0a0a92");
-  sideBar.style("overflow-y", "scroll"); //Makes it scrollable
-  sideBar.style("display", "flex"); //Meets size of contents
+  sideBar.style("overflow-y", "auto"); //Makes it scrollable
+  sideBar.style("display", "grid"); //Meets size of contents
   sideBar.style("flex-direction", "column");
   sideBar.style("padding", "10px");
-  sideBar.style("align-items", "center");
+  sideBar.style("justify-content", "center");
   sideBar.style('gap', '10px');
 
   for (let object of objectLibrary) {
@@ -2722,7 +2803,6 @@ function setup() {
     button.style('border', 'none');
     
     //Get the corresponding image for our button and convert to form which the button can use
-    console.log(object);
     let imageItem = imageTable[object[4]];
     let convertedData = imageItem.canvas.toDataURL();
 
@@ -2733,6 +2813,6 @@ function setup() {
 
     button.mousePressed(function () {
       selected = object;
-    })
+    });
   }
 }
