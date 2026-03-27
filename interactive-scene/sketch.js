@@ -42,6 +42,7 @@ let fadeRate = 10;
 
 
 //Animations and sprites
+let playerButtonSheet;
 let playerIdleSheet;
 let playerrollingSheet;
 let playerJumpSheet;
@@ -113,6 +114,7 @@ function preload() {
   playerLedgeSheet = loadImage("Character/ledgeClimb.png");
   playerDownSlam = loadImage("Character/down.png");
   playerBlock = loadImage("Character/block.png");
+  playerButtonSheet = loadImage("Character/buttonImg.png");
 
   //Mushroom animations
   mushroomAttack = loadImage("Mushroom/Mushroom-Attack.png");
@@ -1842,7 +1844,7 @@ class Debris{
   }
 }
 
-class reakableObject {
+class BreakableObject {
   constructor(x, y, sizeX, sizeY, mainImg, health) {
     this.x = x;
     this.y = y;
@@ -2134,7 +2136,12 @@ function draw() {
 
   if (inDevMode) {
     //Show transparent block to show where your block position is (position in the drawloop needs to be here)
-    displayBlock();
+    if (selected[selected.length - 1] === "block") {
+      displayBlock();
+    }
+    else if (selected[selected.length - 1] === "player") {
+      displayPlayer();
+    }
   }
   
   drawAllPlatforms();
@@ -2251,7 +2258,10 @@ function drawAllPlatforms() {
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
       if (mapGrid[x] && mapGrid[x][y]) {
-        mapGrid[x][y].display();
+        if (mapGrid[x][y] instanceof Platform) {
+          mapGrid[x][y].display();
+        }
+        
       }
       
     }
@@ -2617,6 +2627,38 @@ function displayBlock() {
   noTint();
 }
 
+function displayPlayer() {
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  if (!mapGrid[gridX]) {
+    return;
+  }
+
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
+
+  tint(255, 127);
+
+  image(
+    player.currentSheet,
+    drawX,
+    drawY,
+    player.frameWidth * player.imageScale * player.xScale,
+    player.frameHeight * player.imageScale * player.yScale,
+    0,
+    player.sprites.idle.yOffset,
+    player.frameWidth,
+    player.sprites.idle.charHeight
+  );
+  
+  noTint();
+}
+
 function placeBlock() {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2644,6 +2686,7 @@ function placeBlock() {
 
   let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
   mapGrid[gridX][gridY] = platform;
+  console.log(gridX, gridY);
   
 }
 
@@ -2656,36 +2699,54 @@ function placePlayer(){
   let gridY = Math.floor(worldY/cellSize);
 
   //If theres no grid position or if that block is occupied exit early
-  if (!mapGrid[gridX] || mapGrid[gridX][gridY] !== NOBLOCK) {
-    return;
-  }
-
-
-  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
-    mapGrid[gridX][gridY] = 1; //Occupied
-  }
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
+  //Reset last square if it was a player
+  let playerGridX = floor(player.x/cellSize);
+  let playerGridY = floor(player.y/cellSize);
+
+  for (let y = -1; y <= 1; y++) {
+    mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+  }
+
   player.x = drawX;
   player.y = drawY;
 
-  //Occupy a 2x6 section of the map for the player and return the player to the entities table
-  mapGrid[gridX][gridY] = "player";
-  entities.push(player);
+  console.log(playerGridX, playerGridY);
+
+  //Occupy a 1x3 section of the map for the player and return the player to the entities table
+  
+  for (let y = -1; y <= 1; y++) {
+    mapGrid[gridX][gridY + y] = "player";
+  }
+
+  let isPlayer = false;
+
+  for (let entity of entities) {
+    if (entity === "player") {
+      isPlayer = true;
+    }
+  }
+
+  if (!isPlayer) {
+    entities.push(player);
+  }
+  console.log(entities);
 }
 
 
 function placeObject() {
   if (inDevMode) {
     //Check what type of object this is
-    if (selected[10] === "block") {
+    if (selected[selected.length - 1] === "block") {
       placeBlock();
     }
 
-    if (selected[10] === "player") {
-      placePlayer;
+    if (selected[selected.length - 1] === "player") {
+      console.log("ITS A PLAYER");
+      placePlayer();
     }
   }
 }
@@ -2726,7 +2787,7 @@ function setup() {
   // Player Animations
     playerIdleSheet, playerrollingSheet, playerJumpSheet, playerRunningSheet,
     playerPunch1, playerPunch2, playerPunch3, playerSprintSheet,
-    playerUpwardPunch, playerLedgeSheet, playerDownSlam, playerBlock,
+    playerUpwardPunch, playerLedgeSheet, playerDownSlam, playerBlock, playerButtonSheet,
 
     // Mushroom animations
     mushroomAttack, mushroomDie, mushroomIdle, mushroomRun, 
@@ -2761,7 +2822,7 @@ function setup() {
   dirtLeft = [24, 24, false, "brown", "dirtStageL", 24, 24, true, true, false, "block"];
   dirtRight = [24, 24, false, "brown", "dirtStageR", 24, 24, true, true, false, "block"];
   dirtMid = [24, 24, false, "brown", "dirtStageM", 24, 24, true, true, false, "block"];
-  playerObject = [null, null, null, null, "deadGrassStageL", null, null, null, "player"]
+  playerObject = [100, 100, null, null, "playerButtonSheet", null, null, null, null, null, "player"];
 
   //Make table containing all object presets
   let objectLibrary = [
