@@ -181,6 +181,8 @@ let dirtLeft;
 let dirtRight;
 let dirtMid;
 let sideBar;
+let spike;
+let mushroomBtn;
 
 //Grid configs
 let mapGrid = [];
@@ -190,6 +192,7 @@ let totalRows = 100;
 let createdStages = [];
 let selected;
 let inDevMode = false;
+let blocksPlaced = [];
 
 //Define our library of objects
 let objectLibrary;
@@ -1321,7 +1324,6 @@ class Mushroom extends Humanoid {
 
     //Reset
     pop();
-    rect(this.x, this.y, this.sizeX, this.sizeY);
   }
 
   handleState() {
@@ -1766,6 +1768,7 @@ class HurtBlock extends Platform{
       //This doesn't actually work right now as the platform collision function does not return true if it hits a mushroom (need fix)
       if (item instanceof Mushroom) {
         item.health = 0;
+        item.onHit();
       }
     }
   }
@@ -2136,7 +2139,7 @@ function draw() {
 
   if (inDevMode) {
     //Show transparent block to show where your block position is (position in the drawloop needs to be here)
-    if (selected[selected.length - 1] === "block") {
+    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "hurtBlock") {
       displayBlock();
     }
     else if (selected[selected.length - 1] === "player") {
@@ -2156,7 +2159,25 @@ function draw() {
 
 //Inputs
 function keyPressed() {
+  //Undo button (ctrl + Z)
+  if (key === "z") {
+    if (keyIsDown(17)) {
+      mapGrid[blocksPlaced[blocksPlaced.length - 1][0]][blocksPlaced[blocksPlaced.length - 1][1]] = NOBLOCK;
+      blocksPlaced.pop();
+    }
+  }
+  
+  if (inDevMode) {
+    return;
+  }
+
   if (key === " ") {
+    player.jump();
+    player.inputBuffers.jump = millis();
+    player.pressedS = 0;
+  }
+
+  if (key === "w") {
     player.jump();
     player.inputBuffers.jump = millis();
     player.pressedS = 0;
@@ -2188,6 +2209,10 @@ function keyReleased() {
 
 //When mouse is pressed attack
 function mousePressed() {
+  if (inDevMode) {
+    return;
+  }
+
   player.hit();
   player.inputBuffers.punch = millis();
 }
@@ -2346,7 +2371,7 @@ function createStage(x, y, blocksWide, blocksTall, cantCollide, stage) {
 
 //Create a spike pit based off blockswide
 function createSpikePit(x, y, blocksWide) {
-  platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", spikeUp, 16, 32));
+  platforms.push(new HurtBlock(x, y, 16 * blocksWide, 32, false, "red", "spikeUp", 16, 32));
 }
 
 //Creates platform
@@ -2530,7 +2555,7 @@ function stage1() {
   createStage(width / 2 - 400, groundLevel, 10, 32);
 
   //Platform
-  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, deadGrassPlatform);
+  createPlatform(width / 2 + 1500 , groundLevel - 600, 15, "deadGrassPlatform");
 }
 
 function stage2() {
@@ -2538,29 +2563,29 @@ function stage2() {
 
   //Hillstone type backdrop
   createStage(width / 2 + 2175, groundLevel + 12 * 64 , 12, 80, true);
-  createStage(width / 2 + 2000, groundLevel + 12 * 64 , 6, 75, true, stoneStage);
-  createStage(width / 2 + 2350, groundLevel + 12 * 64 , 12, 27, true, stoneStage);
+  createStage(width / 2 + 2000, groundLevel + 12 * 64 , 6, 75, true, "stoneStage");
+  createStage(width / 2 + 2350, groundLevel + 12 * 64 , 12, 27, true, "stoneStage");
 
   //Stage bumps
-  createStage(width / 2 + 1950, groundLevel + 800, 6, 6, false, stoneStage);
+  createStage(width / 2 + 1950, groundLevel + 800, 6, 6, false, "stoneStage");
 
   //Floor that you land on
-  createStage(width / 2 + 2200, groundLevel + 1000, 34, 20, false, stoneStage);
+  createStage(width / 2 + 2200, groundLevel + 1000, 34, 20, false, "stoneStage");
   
   //Pillars that surround you as you drop
-  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 8, 100, false, stoneStage);
-  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 100, false, stoneStage);
-  createStage(width / 2 + 1500, groundLevel + 12 * 64 , 16, 100, false, stoneStage);
+  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 8, 100, false, "stoneStage");
+  createStage(width / 2 + 1800, groundLevel + 12 * 64 , 12, 100, false, "stoneStage");
+  createStage(width / 2 + 1500, groundLevel + 12 * 64 , 16, 100, false, "stoneStage");
 
   //Background rock hills for effect
-  createStage(width / 2 + 1700, groundLevel + 12 * 64 , 10, 25, false, stoneStage);
-  createStage(width / 2 + 1200, groundLevel + 12 * 64 , 26, 40, false, stoneStage);
-  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 6, 35, false, stoneStage);
+  createStage(width / 2 + 1700, groundLevel + 12 * 64 , 10, 25, false, "stoneStage");
+  createStage(width / 2 + 1200, groundLevel + 12 * 64 , 26, 40, false, "stoneStage");
+  createStage(width / 2 + 1250, groundLevel + 12 * 64 , 6, 35, false, "stoneStage");
 
   //Actual Stage (pit)
-  createStage(width / 2 + 3000, groundLevel + 1200, 34, 20, false, stoneStage);
-  createStage(width / 2 + 2500, groundLevel + 1000, 16, 30, false, stoneStage);
-  createStage(width / 2 + 3500, groundLevel + 1150, 20, 28, false, stoneStage);
+  createStage(width / 2 + 3000, groundLevel + 1200, 34, 20, false, "stoneStage");
+  createStage(width / 2 + 2500, groundLevel + 1000, 16, 30, false, "stoneStage");
+  createStage(width / 2 + 3500, groundLevel + 1150, 20, 28, false, "stoneStage");
 
   entities.push(new Mushroom(width/2 + 3000, groundLevel - 220, 0, 0, "left"));
   entities.push(new Mushroom(width/2 + 3050, groundLevel - 220, 0, 0, "right"));
@@ -2601,6 +2626,11 @@ function dev() {
     window[currentStage]();
     entities.push(player);
   }
+
+  //Reset player
+  player.actionState = "idle";
+  player.xScale = 1;
+  player.yScale = 1;
 }
 
 function displayBlock() {
@@ -2659,6 +2689,38 @@ function displayPlayer() {
   noTint();
 }
 
+function displayMushroom() {
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  if (!mapGrid[gridX]) {
+    return;
+  }
+
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
+
+  tint(255, 127);
+
+  image(
+    mushroomIdle,
+    0,
+    -verticalOffset + this.sizeY / 2,
+    this.frameWidth * this.imageScale * this.xScale,
+    this.frameHeight * this.imageScale * this.yScale,
+    this.xCrop,
+    anim.yOffset,
+    this.frameWidth,
+    anim.charHeight
+  );
+  
+  noTint();
+}
+
 function placeBlock() {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2668,11 +2730,21 @@ function placeBlock() {
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  //If theres no grid position or if that block is occupied exit early
-  if (!mapGrid[gridX] || mapGrid[gridX][gridY] !== NOBLOCK) {
+  //Return early if no spot there
+  if (!mapGrid[gridX]) {
     return;
   }
 
+
+  if (mapGrid[gridX][gridY]  === "player") {
+    entities = entities.filter(item => item !== player);
+    for (let y = -1; y <= 1; y++) {
+      let playerGridX = floor(player.x/cellSize);
+      let playerGridY = floor(player.y/cellSize);
+
+      mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+    }
+  }
 
   if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
     mapGrid[gridX][gridY] = 1; //Occupied
@@ -2687,7 +2759,44 @@ function placeBlock() {
   let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
   mapGrid[gridX][gridY] = platform;
   console.log(gridX, gridY);
+  blocksPlaced.push([gridX, gridY]);
+}
+
+function placeHurtBlock() {
+  //Get the position of the actual world relative to the camera
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
   
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  //if no position on grid return
+  if (!mapGrid[gridX]) {
+    return;
+  }
+
+  //if player is there remove all its tiles, else remove just that tile
+  if (mapGrid[gridX][gridY]  === "player") {
+    entities = entities.filter(item => item !== player);
+    for (let y = -1; y <= 1; y++) {
+      let playerGridX = floor(player.x/cellSize);
+      let playerGridY = floor(player.y/cellSize);
+
+      mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+    }
+  }
+
+  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
+    mapGrid[gridX][gridY] = 1; //Occupied
+  }
+
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
+  
+  let hurtBlock = new HurtBlock(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
+  mapGrid[gridX][gridY] = hurtBlock;
+  console.log(gridX, gridY);
 }
 
 function placePlayer(){
@@ -2708,7 +2817,9 @@ function placePlayer(){
   let playerGridY = floor(player.y/cellSize);
 
   for (let y = -1; y <= 1; y++) {
-    mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+    if (entities.indexOf(player) !== -1) {
+      mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+    }
   }
 
   player.x = drawX;
@@ -2725,7 +2836,7 @@ function placePlayer(){
   let isPlayer = false;
 
   for (let entity of entities) {
-    if (entity === "player") {
+    if (entity === player) {
       isPlayer = true;
     }
   }
@@ -2733,9 +2844,31 @@ function placePlayer(){
   if (!isPlayer) {
     entities.push(player);
   }
-  console.log(entities);
 }
 
+function placeMushroom(){
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+  //If theres no grid position or if that block is occupied exit early
+
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY = gridY * cellSize + cellSize/2;
+
+  console.log(playerGridX, playerGridY);
+
+  //Occupy a 1x3 section of the map for the player and return the player to the entities table
+  
+  for (let y = 0; y <= 1; y++) {
+    mapGrid[gridX][gridY + y] = "mushroom";
+  }
+
+  entities.push(new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0));
+}
 
 function placeObject() {
   if (inDevMode) {
@@ -2745,8 +2878,15 @@ function placeObject() {
     }
 
     if (selected[selected.length - 1] === "player") {
-      console.log("ITS A PLAYER");
       placePlayer();
+    }
+
+    if (selected[selected.length - 1] === "hurtBlock") {
+      placeHurtBlock();
+    }
+
+    if (selected[selected.length - 1] === "mushroom") {
+      placeHurtBlock();
     }
   }
 }
@@ -2823,6 +2963,9 @@ function setup() {
   dirtRight = [24, 24, false, "brown", "dirtStageR", 24, 24, true, true, false, "block"];
   dirtMid = [24, 24, false, "brown", "dirtStageM", 24, 24, true, true, false, "block"];
   playerObject = [100, 100, null, null, "playerButtonSheet", null, null, null, null, null, "player"];
+  spike = [24, 24, false, "grey", "spikeUp", 24, 24, true, false, false, "hurtBlock"];
+  mushroomBtn = [100, 100, null, null, "mushroomIdle", null, null, null, null, null, "mushroom"];
+
 
   //Make table containing all object presets
   let objectLibrary = [
@@ -2832,7 +2975,9 @@ function setup() {
     dirtLeft,
     dirtRight,
     dirtMid,
-    playerObject
+    playerObject,
+    spike,
+    mushroomBtn
   ];
 
   selected = deadGrassLeft;
@@ -2841,7 +2986,7 @@ function setup() {
   player = new Player(width / 2, groundLevel - 150);
   entities.push(player);
 
-  stage3();
+  stage1();
   
 
   //Setting up our sidebar for the devmode
