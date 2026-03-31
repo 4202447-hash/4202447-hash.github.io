@@ -193,6 +193,7 @@ let createdStages = [];
 let selected;
 let inDevMode = false;
 let blocksPlaced = [];
+let lastUndo = 0;
 
 //Define our library of objects
 let objectLibrary;
@@ -2071,16 +2072,24 @@ class Gate {
   }
 }
 
-function draw() {
-  background(245, 245, 220);
+function checkDevModePost() {
+  if (inDevMode) {
+    //Show transparent block to show where your block position is (position in the drawloop needs to be here)
+    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "hurtBlock") {
+      displayBlock();
+    }
+    else if (selected[selected.length - 1] === "player") {
+      displayPlayer();
+    }
 
-  scale(mapScale);
-  drawBackground();
+    //Check inputs
+    if (keyIsDown(90) && keyIsDown(17)) {
+      undo();
+    }
+  }
+}
 
-  //Variable to see how long S has been held
-  let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
-
-
+function checkDevModePre(sHoldTime) {
   if (inDevMode === false){
     //Follow player with camera
     let targetX = width / 2 - player.x - 250 ;
@@ -2118,6 +2127,19 @@ function draw() {
       placeObject();
     }
   }
+}
+
+
+function draw() {
+  background(245, 245, 220);
+
+  scale(mapScale);
+  drawBackground();
+
+  //Variable to see how long S has been held
+  let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
+
+  checkDevModePre(sHoldTime);
 
   push();
 
@@ -2126,26 +2148,10 @@ function draw() {
   let screenShakeY = 0;
 
   //Shake screen if screenshake is above 0.1 (screenshake is the magnitude)
-  if (screenShake > 0.1) {
-    screenShakeX = random(-screenShake, screenShake);
-    screenShakeY = random(-screenShake, screenShake);
-    screenShake *= 0.8;
-  }
-  else {
-    screenShake = 0;
-  }
 
   translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
-  if (inDevMode) {
-    //Show transparent block to show where your block position is (position in the drawloop needs to be here)
-    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "hurtBlock") {
-      displayBlock();
-    }
-    else if (selected[selected.length - 1] === "player") {
-      displayPlayer();
-    }
-  }
+  checkDevModePost();
   
   drawAllPlatforms();
   drawAllEntities();
@@ -2160,12 +2166,6 @@ function draw() {
 //Inputs
 function keyPressed() {
   //Undo button (ctrl + Z)
-  if (key === "z") {
-    if (keyIsDown(17)) {
-      mapGrid[blocksPlaced[blocksPlaced.length - 1][0]][blocksPlaced[blocksPlaced.length - 1][1]] = NOBLOCK;
-      blocksPlaced.pop();
-    }
-  }
   
   if (inDevMode) {
     return;
@@ -2730,7 +2730,8 @@ function placeBlock() {
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  //Return early if no spot there
+  //Return early if no spot there OR if the current selected block is the block already there
+
   if (!mapGrid[gridX]) {
     return;
   }
@@ -2746,10 +2747,6 @@ function placeBlock() {
     }
   }
 
-  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
-    mapGrid[gridX][gridY] = 1; //Occupied
-  }
-
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
@@ -2757,9 +2754,15 @@ function placeBlock() {
   //The mapgrid array is using the new system 
 
   let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
-  mapGrid[gridX][gridY] = platform;
+
+  //Push platform to list of blocks placed if it isn't literally the same block
+
+  if (platform.img !== mapGrid[gridX][gridY].img) {
+    blocksPlaced.push([gridX, gridY]);
+    mapGrid[gridX][gridY] = platform;
+  }
+
   console.log(gridX, gridY);
-  blocksPlaced.push([gridX, gridY]);
 }
 
 function placeHurtBlock() {
@@ -2904,6 +2907,17 @@ function moveCamera() {
   if (keyIsDown(83)) {
     cameraY -= CAMERAMOVEAMOUNT;
   }
+}
+
+//Utility functions for stage building (undo, copy and paste ect)
+function undo(){
+  //Return if blocksPlaced is empty
+  if (!blocksPlaced[0]) {
+    return;
+  }
+  
+  mapGrid[blocksPlaced[blocksPlaced.length - 1][0]][blocksPlaced[blocksPlaced.length - 1][1]] = NOBLOCK;
+  blocksPlaced.pop();
 }
 
 function setup() {
