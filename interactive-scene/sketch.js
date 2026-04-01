@@ -1181,7 +1181,6 @@ class Mushroom extends Humanoid {
       }
     }
 
-
     if (this.moveDir !== 0 && this.moveSpeed !== 0) {
       this.speed = this.moveSpeed;
       let accel = this.speed;
@@ -1191,7 +1190,6 @@ class Mushroom extends Humanoid {
       this.xVel = this.moveDir * accel;
     }
     
-
     //Apply gravity
     if (!this.grounded && this.actionState) {
       this.yVel += GRAVITATIONALFORCE;
@@ -1334,7 +1332,7 @@ class Mushroom extends Humanoid {
       this.actionState === "gotHit" ||
       this.actionState === "attackWind" ||
       this.actionState === "attackRecover" ||
-      this.actionState === "stun"
+      this.actionState === "stun" || !this.active
     ) {
       return;
     }
@@ -1428,7 +1426,7 @@ class Mushroom extends Humanoid {
 
   applyHit() {
     //Player dodges it if mushroom is currently attacking and player is rolling
-    if (player.actionState === "rolling" && this.actionState === "attack") {
+    if (!this.active || player.actionState === "rolling" && this.actionState === "attack") {
       return;
     }
 
@@ -2111,7 +2109,7 @@ function checkDevModePre(sHoldTime) {
     sideBar.position(-1000, -1000);
 
     //Run all non draw related functions
-    updateAllEntites();
+    updateAllEntities();
     applyAllPhysics();
     checkAllcollisions();
   }
@@ -2153,9 +2151,10 @@ function draw() {
 
   checkDevModePost();
   
-  drawAllPlatforms();
-  drawAllEntities();
-  drawAllBreakableObjects();
+  // drawAllPlatforms();
+  // drawAllEntities();
+  // drawAllBreakableObjects();
+  drawEverything();
   checkGates();
   pop();
 
@@ -2227,7 +2226,7 @@ function makeTower(x, y, amount) {
 }
 
 //Update all entities
-function updateAllEntites() {
+function updateAllEntities() {
   for (let entity of entities) {
     entity.update();
   }
@@ -2246,6 +2245,24 @@ function checkAllcollisions() {
   for (let object of brObjects) {
     for (let person of entities) {
       object.checkCollision(person);
+    }
+  }
+
+  for (let x = 0; x < totalRows; x++) {
+    for (let y = 0; y < totalCols; y++) {
+      if (mapGrid[x] && mapGrid[x][y]) {
+        if (mapGrid[x][y] instanceof Platform) {
+          for (let entity of entities) {
+            mapGrid[x][y].checkCollision(entity);
+          }
+          for (let object of brObjects) {
+            for (let chunk of object.chunks) {
+              mapGrid[x][y].checkcollision(chunk);
+            }
+          }
+        }
+      }
+      
     }
   }
 
@@ -2286,7 +2303,17 @@ function drawAllPlatforms() {
         if (mapGrid[x][y] instanceof Platform) {
           mapGrid[x][y].display();
         }
-        
+      }
+      
+    }
+  }
+}
+
+function drawEverything() {
+  for (let x = 0; x < totalRows; x++) {
+    for (let y = 0; y < totalCols; y++) {
+      if (mapGrid[x] && mapGrid[x][y]) {
+        mapGrid[x][y].display();
       }
       
     }
@@ -2297,6 +2324,14 @@ function drawAllPlatforms() {
 function drawAllEntities() {
   for (let entity of entities) {
     entity.display();
+  }
+
+  for (let x = 0; x < totalRows; x++) {
+    for (let y = 0; y < totalCols; y++) {
+      if (mapGrid[x] && mapGrid[x][y]) {
+        mapGrid[x][y].display();
+      }
+    }
   }
 }
 
@@ -2675,7 +2710,7 @@ function displayPlayer() {
   tint(255, 127);
 
   image(
-    player.currentSheet,
+    player.idleSheet,
     drawX,
     drawY,
     player.frameWidth * player.imageScale * player.xScale,
@@ -2708,8 +2743,8 @@ function displayMushroom() {
 
   image(
     mushroomIdle,
-    0,
-    -verticalOffset + this.sizeY / 2,
+    drawX,
+    drawY,
     this.frameWidth * this.imageScale * this.xScale,
     this.frameHeight * this.imageScale * this.yScale,
     this.xCrop,
@@ -2730,8 +2765,7 @@ function placeBlock() {
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  //Return early if no spot there OR if the current selected block is the block already there
-
+  //Return early if no spot there
   if (!mapGrid[gridX]) {
     return;
   }
@@ -2752,17 +2786,13 @@ function placeBlock() {
 
   //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
   //The mapgrid array is using the new system 
-
   let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
 
-  //Push platform to list of blocks placed if it isn't literally the same block
-
-  if (platform.img !== mapGrid[gridX][gridY].img) {
+  //Push platform to list of blocks placed if it isn't literally the same block already there
+  if (platform && platform.img !== mapGrid[gridX][gridY].img) {
     blocksPlaced.push([gridX, gridY]);
     mapGrid[gridX][gridY] = platform;
   }
-
-  console.log(gridX, gridY);
 }
 
 function placeHurtBlock() {
@@ -2790,16 +2820,16 @@ function placeHurtBlock() {
     }
   }
 
-  if (gridX >= 0 && gridX <= totalCols && gridY >= 0 && gridY <= totalRows){
-    mapGrid[gridX][gridY] = 1; //Occupied
-  }
-
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
   
   let hurtBlock = new HurtBlock(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
-  mapGrid[gridX][gridY] = hurtBlock;
-  console.log(gridX, gridY);
+  
+  if (hurtBlock.img !== mapGrid[gridX][gridY].img) {
+    blocksPlaced.push([gridX, gridY]);
+    mapGrid[gridX][gridY] = hurtBlock;
+    console.log(gridX, gridY);
+  }
 }
 
 function placePlayer(){
@@ -2810,43 +2840,40 @@ function placePlayer(){
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-  //If theres no grid position or if that block is occupied exit early
+  //if no position on grid return
+  if (!mapGrid[gridX]) {
+    return;
+  }
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
-  //Reset last square if it was a player
-  let playerGridX = floor(player.x/cellSize);
-  let playerGridY = floor(player.y/cellSize);
-
-  for (let y = -1; y <= 1; y++) {
-    if (entities.indexOf(player) !== -1) {
-      mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
+  //Get rid of the player object if it already exists
+  for (let x = 0; x < totalRows; x++) {
+    for (let y = 0; y < totalCols; y++) {
+      if (mapGrid[x][y] instanceof Player) {
+        mapGrid[x][y] = NOBLOCK;
+      }
     }
   }
+
+  mapGrid[gridX][gridY] = player;
+
+  //Also set the blocks below and above this block to 1 just to show it is occupied and to delete any existing blocks
+  for (let x = -1; x < 1; x++) {
+    for (let y = -1; y < 1; y++) {
+      //Exclude the block which actually contains the player
+      if (x !== 0 && y !== 0) {
+        mapGrid[gridX + x][gridY + y] = NOBLOCK;
+      }
+      
+    }
+  }
+
+  console.log(gridX, gridY);
 
   player.x = drawX;
   player.y = drawY;
-
-  console.log(playerGridX, playerGridY);
-
-  //Occupy a 1x3 section of the map for the player and return the player to the entities table
-  
-  for (let y = -1; y <= 1; y++) {
-    mapGrid[gridX][gridY + y] = "player";
-  }
-
-  let isPlayer = false;
-
-  for (let entity of entities) {
-    if (entity === player) {
-      isPlayer = true;
-    }
-  }
-
-  if (!isPlayer) {
-    entities.push(player);
-  }
 }
 
 function placeMushroom(){
@@ -2857,20 +2884,30 @@ function placeMushroom(){
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
+  //if no position on grid return
+  if (!mapGrid[gridX]) {
+    return;
+  }
+
   //If theres no grid position or if that block is occupied exit early
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
-  console.log(playerGridX, playerGridY);
-
   //Occupy a 1x3 section of the map for the player and return the player to the entities table
-  
+
+  let mushroom = new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0);
+  entities.push(mushroom);
+
   for (let y = 0; y <= 1; y++) {
-    mapGrid[gridX][gridY + y] = "mushroom";
+    mapGrid[gridX][gridY + y] = mushroom;
   }
 
-  entities.push(new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0));
+  if (mushroom.img !== mapGrid[gridX][gridY].img) {
+    blocksPlaced.push([gridX, gridY]);
+    mapGrid[gridX][gridY] = mushroom;
+    console.log(gridX, gridY);
+  }
 }
 
 function placeObject() {
@@ -2889,7 +2926,7 @@ function placeObject() {
     }
 
     if (selected[selected.length - 1] === "mushroom") {
-      placeHurtBlock();
+      placeMushroom();
     }
   }
 }
@@ -2910,14 +2947,17 @@ function moveCamera() {
 }
 
 //Utility functions for stage building (undo, copy and paste ect)
-function undo(){
+function undo(entity){
   //Return if blocksPlaced is empty
-  if (!blocksPlaced[0]) {
+  if (!blocksPlaced[0] || millis() - lastUndo < 150) {
     return;
   }
   
+  lastUndo = millis();
   mapGrid[blocksPlaced[blocksPlaced.length - 1][0]][blocksPlaced[blocksPlaced.length - 1][1]] = NOBLOCK;
   blocksPlaced.pop();
+
+  //If there is an entity also remove that entity from the entities table
 }
 
 function setup() {
