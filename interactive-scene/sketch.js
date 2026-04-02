@@ -1020,7 +1020,7 @@ class Mushroom extends Humanoid {
 
     //Settings
     this.imageScale = 1.5;
-    this.sizeY = 24 * this.imageScale;
+    this.sizeY = 16 * this.imageScale;
     this.sizeX = 20 * this.imageScale; 
     this.normalSize = 20 * this.imageScale; 
     this.attackSize = this.sizeX + 25;
