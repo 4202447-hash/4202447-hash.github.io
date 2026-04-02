@@ -1020,7 +1020,7 @@ class Mushroom extends Humanoid {
 
     //Settings
     this.imageScale = 1.5;
-    this.sizeY = 27 * this.imageScale;
+    this.sizeY = 24 * this.imageScale;
     this.sizeX = 20 * this.imageScale; 
     this.normalSize = 20 * this.imageScale; 
     this.attackSize = this.sizeX + 25;
@@ -2313,7 +2313,9 @@ function drawEverything() {
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
       if (mapGrid[x] && mapGrid[x][y]) {
-        mapGrid[x][y].display();
+        if (typeof mapGrid[x][y] !== 'string' && typeof mapGrid[x][y] !== 'number') {
+          mapGrid[x][y].display();
+        }
       }
       
     }
@@ -2771,7 +2773,7 @@ function placeBlock() {
   }
 
 
-  if (mapGrid[gridX][gridY]  === "player") {
+  if (mapGrid[gridX][gridY]  === player || mapGrid[gridX][gridY]  === "player") {
     entities = entities.filter(item => item !== player);
     for (let y = -1; y <= 1; y++) {
       let playerGridX = floor(player.x/cellSize);
@@ -2857,19 +2859,15 @@ function placePlayer(){
     }
   }
 
-  mapGrid[gridX][gridY] = player;
-
-  //Also set the blocks below and above this block to 1 just to show it is occupied and to delete any existing blocks
-  for (let x = -1; x < 1; x++) {
-    for (let y = -1; y < 1; y++) {
-      //Exclude the block which actually contains the player
-      if (x !== 0 && y !== 0) {
-        mapGrid[gridX + x][gridY + y] = NOBLOCK;
-      }
-      
+  //Also set the blocks below and above this block to the string "player" so we can recognize this as a player without looping through player object multiple times
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      mapGrid[gridX + x][gridY + y] = "player";
     }
   }
-
+  
+  //Set center block to player object so we can loop through it
+  mapGrid[gridX][gridY] = player;
   console.log(gridX, gridY);
 
   player.x = drawX;
@@ -2894,18 +2892,14 @@ function placeMushroom(){
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
-  //Occupy a 1x3 section of the map for the player and return the player to the entities table
 
   let mushroom = new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0);
-  entities.push(mushroom);
-
-  for (let y = 0; y <= 1; y++) {
-    mapGrid[gridX][gridY + y] = mushroom;
-  }
-
-  if (mushroom.img !== mapGrid[gridX][gridY].img) {
+  
+  //If not already a mushroom there place mushroom
+  if (!(mapGrid[gridX][gridY] instanceof Mushroom)) {
     blocksPlaced.push([gridX, gridY]);
-    mapGrid[gridX][gridY] = mushroom;
+    mapGrid[gridX][gridY - 1] = mushroom;
+    mapGrid[gridX][gridY] = "mushroom";
     console.log(gridX, gridY);
   }
 }
