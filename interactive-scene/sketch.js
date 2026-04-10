@@ -183,6 +183,7 @@ let dirtMid;
 let sideBar;
 let spike;
 let mushroomBtn;
+let playerObject;
 
 //Grid configs
 let mapGrid = [];
@@ -193,7 +194,9 @@ let createdStages = [];
 let selected;
 let inDevMode = false;
 let blocksPlaced = [];
+let blocksUndone = [];
 let lastUndo = 0;
+let lastRedo = 0;
 
 //Define our library of objects
 let objectLibrary;
@@ -358,18 +361,18 @@ class Player extends Humanoid {
     this.lastBlock = 0;
 
     //Animation Sheets
-    this.runningSheet = playerRunningSheet;
-    this.idleSheet = playerIdleSheet;
-    this.rollingSheet = playerrollingSheet;
-    this.jumpSheet = playerJumpSheet;
-    this.punch1 = playerPunch1;
-    this.punch2 = playerPunch2;
-    this.punch3 = playerPunch3;
-    this.sprintingSheet = playerSprintSheet;
-    this.punchUp = playerUpwardPunch;
-    this.ledgeClimb = playerLedgeSheet;
-    this.downSlam = playerDownSlam;
-    this.blockAnim = playerBlock;
+    this.runningSheet = "playerRunningSheet";
+    this.idleSheet = "playerIdleSheet";
+    this.rollingSheet = "playerrollingSheet";
+    this.jumpSheet = "playerJumpSheet";
+    this.punch1 = "playerPunch1";
+    this.punch2 = "playerPunch2";
+    this.punch3 = "playerPunch3";
+    this.sprintingSheet = "playerSprintSheet";
+    this.punchUp = "playerUpwardPunch";
+    this.ledgeClimb = "playerLedgeSheet";
+    this.downSlam = "playerDownSlam";
+    this.blockAnim = "playerBlock";
 
     //Hearts and huds
     this.redHeartActive = true;
@@ -860,7 +863,7 @@ class Player extends Humanoid {
     }
 
     image(
-      this.currentSheet,
+      imageTable[this.currentSheet],
       0,
       this.lastActionState === "ledgeClimb"
         ? 0
@@ -1021,7 +1024,7 @@ class Mushroom extends Humanoid {
     //Settings
     this.imageScale = 1.5;
     this.sizeY = 16 * this.imageScale;
-    this.sizeX = 20 * this.imageScale; 
+    this.sizeX = 16 * this.imageScale; 
     this.normalSize = 20 * this.imageScale; 
     this.attackSize = this.sizeX + 25;
     this.active = true;
@@ -1046,12 +1049,12 @@ class Mushroom extends Humanoid {
     this.frameHeight = 0;
     this.currentSheet = 0;
 
-    this.hit = mushroomAttack;
-    this.die = mushroomDie;
-    this.stunned = mushroomStun;
-    this.idle = mushroomIdle;
-    this.run = mushroomRun;
-    this.gotHit = mushroomGotHit;
+    this.hit = "mushroomAttack";
+    this.die = "mushroomDie";
+    this.stunned = "mushroomStun";
+    this.idle = "mushroomIdle";
+    this.run = "mushroomRun";
+    this.gotHit = "mushroomGotHit";
 
     this.sprites = {
       idle: {
@@ -1309,7 +1312,7 @@ class Mushroom extends Humanoid {
     }
 
     image(
-      this.currentSheet,
+      imageTable[this.currentSheet],
       this.actionState === "attack" ? 25 : 0,
       -verticalOffset + this.sizeY / 2,
       this.frameWidth * this.imageScale * this.xScale,
@@ -2084,6 +2087,10 @@ function checkDevModePost() {
     if (keyIsDown(90) && keyIsDown(17)) {
       undo();
     }
+   
+    if (keyIsDown(89) && keyIsDown(17)) {
+      redo();
+    }
   }
 }
 
@@ -2712,7 +2719,7 @@ function displayPlayer() {
   tint(255, 127);
 
   image(
-    player.idleSheet,
+    imageTable[player.idleSheet],
     drawX,
     drawY,
     player.frameWidth * player.imageScale * player.xScale,
@@ -2758,41 +2765,54 @@ function displayMushroom() {
   noTint();
 }
 
-function placeBlock() {
+function handleDeletes(gridX, gridY){
+  if (mapGrid[gridX][gridY]  === player) {
+    deleteArea(gridX, gridY - 1, 1, 3);
+  }
+  else if (mapGrid[gridX][gridY]  === "player1") {
+    deleteArea(gridX, gridY, 1, 3)
+  }
+  else if (mapGrid[gridX][gridY]  === "player2") {
+    deleteArea(gridX, gridY - 2, 1, 3)
+  }
+  else if (mapGrid[gridX][gridY] instanceof Mushroom) {
+    deleteArea(gridX, gridY, 1, 2);
+  }
+  else if (mapGrid[gridX][gridY] === "mushroom") {
+    deleteArea(gridX, gridY - 1, 1, 2);
+  }
+}
+
+function placeBlock(givenX, givenY, givenSelected) {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
 
+  let usedSelected = givenSelected || selected
+
   //Position on grid
-  let gridX = Math.floor(worldX/cellSize);
-  let gridY = Math.floor(worldY/cellSize);
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
 
   //Return early if no spot there
   if (!mapGrid[gridX]) {
     return;
   }
 
+  console.log(mapGrid[gridX][gridY])
 
-  if (mapGrid[gridX][gridY]  === player || mapGrid[gridX][gridY]  === "player") {
-    entities = entities.filter(item => item !== player);
-    for (let y = -1; y <= 1; y++) {
-      let playerGridX = floor(player.x/cellSize);
-      let playerGridY = floor(player.y/cellSize);
-
-      mapGrid[playerGridX][playerGridY + y] = NOBLOCK;
-    }
-  }
+  handleDeletes(gridX, gridY)
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
   //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
   //The mapgrid array is using the new system 
-  let platform = new Platform(drawX, drawY, selected[0], selected[1], selected[2], selected[3], selected[4], selected[5], selected[6], selected[7], selected[8], selected[9]);
+  let platform = new Platform(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[2], usedSelected[3], usedSelected[4], usedSelected[5], usedSelected[6], usedSelected[7], usedSelected[8], usedSelected[9]);
 
   //Push platform to list of blocks placed if it isn't literally the same block already there
   if (platform && platform.img !== mapGrid[gridX][gridY].img) {
-    blocksPlaced.push([gridX, gridY]);
+    blocksPlaced.push([gridX, gridY, usedSelected]);
     mapGrid[gridX][gridY] = platform;
   }
 }
@@ -2834,13 +2854,13 @@ function placeHurtBlock() {
   }
 }
 
-function placePlayer(){
+function placePlayer(givenX, givenY){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
-  let gridX = Math.floor(worldX/cellSize);
-  let gridY = Math.floor(worldY/cellSize);
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
 
   //if no position on grid return
   if (!mapGrid[gridX]) {
@@ -2859,28 +2879,36 @@ function placePlayer(){
     }
   }
 
-  //Also set the blocks below and above this block to the string "player" so we can recognize this as a player without looping through player object multiple times
-  for (let x = -1; x <= 1; x++) {
-    for (let y = -1; y <= 1; y++) {
-      mapGrid[gridX + x][gridY + y] = "player";
-    }
-  }
+  //Set block above and below as identifiers of player 
+  mapGrid[gridX][gridY - 1] = "player1"
+  mapGrid[gridX][gridY + 1] = "player2"
   
   //Set center block to player object so we can loop through it
   mapGrid[gridX][gridY] = player;
   console.log(gridX, gridY);
 
+  //Get rid of the player from blockspalced table if there is one
+  for (let i = blocksPlaced.length - 1; i > 0; i--) {
+    let type = blocksPlaced[i][2]
+    //The last item in the type array is the actual type of object it is
+    if (type[type.length - 1] === "player") {
+      blocksPlaced.splice(i, 1)
+    } 
+  }
+
+  blocksPlaced.push([gridX, gridY, playerObject])
+
   player.x = drawX;
   player.y = drawY;
 }
 
-function placeMushroom(){
+function placeMushroom(givenX, givenY){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
-  let gridX = Math.floor(worldX/cellSize);
-  let gridY = Math.floor(worldY/cellSize);
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
 
   //if no position on grid return
   if (!mapGrid[gridX]) {
@@ -2892,14 +2920,18 @@ function placeMushroom(){
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
+  let currentCell = mapGrid[gridX][gridY]
+  let aboveCell = mapGrid[gridX][gridY - 1]
 
   let mushroom = new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0);
   
   //If not already a mushroom there place mushroom
-  if (!(mapGrid[gridX][gridY] instanceof Mushroom)) {
-    blocksPlaced.push([gridX, gridY]);
+  if (!(currentCell instanceof Mushroom || currentCell === "mushroom") && !(aboveCell instanceof Mushroom || aboveCell === "mushroom")) {
+    
+    blocksPlaced.push([gridX, gridY, selected]);
     mapGrid[gridX][gridY - 1] = mushroom;
     mapGrid[gridX][gridY] = "mushroom";
+    console.log(mapGrid[gridX][gridY])
     console.log(gridX, gridY);
   }
 }
@@ -2941,17 +2973,75 @@ function moveCamera() {
 }
 
 //Utility functions for stage building (undo, copy and paste ect)
-function undo(entity){
+function undo(){
   //Return if blocksPlaced is empty
   if (!blocksPlaced[0] || millis() - lastUndo < 150) {
     return;
   }
-  
-  lastUndo = millis();
-  mapGrid[blocksPlaced[blocksPlaced.length - 1][0]][blocksPlaced[blocksPlaced.length - 1][1]] = NOBLOCK;
-  blocksPlaced.pop();
 
-  //If there is an entity also remove that entity from the entities table
+  let lastBlock = blocksPlaced[blocksPlaced.length - 1]
+  let x = lastBlock[0]
+  let y = lastBlock[1]
+  let type = lastBlock[2]
+    console.log(type[type.length -1])
+  if (type[type.length - 1] === "mushroom") {
+    mapGrid[x][y] = NOBLOCK;
+    mapGrid[x][y - 1] = NOBLOCK;
+
+    lastUndo = millis();
+    blocksUndone.push(blocksPlaced.pop())
+  }
+
+  else if (type[type.length - 1] === "player") {
+    console.log("Gotten rid of player")
+    lastUndo = millis();
+    mapGrid[x][y] = NOBLOCK;
+    mapGrid[x][y - 1] = NOBLOCK;
+    mapGrid[x][y + 1] = NOBLOCK;
+    blocksUndone.push(blocksPlaced.pop())
+  }
+
+  else if (type[type.length - 1] === "block") {
+    lastUndo = millis();
+    mapGrid[x][y] = NOBLOCK;
+    blocksUndone.push(blocksPlaced.pop())
+  }
+}
+
+function redo() {
+  if (!blocksUndone[0] || millis() - lastRedo < 150) {
+    return;
+  }
+
+  let lastBlock = blocksUndone[blocksUndone.length - 1]
+
+  let x = lastBlock[0]
+  let y = lastBlock[1]
+  let type = lastBlock[2]
+
+  //Place block back accordingly
+  if (type[type.length - 1] === "mushroom") {
+    placeMushroom(x, y)
+  }
+
+  else if (type[type.length - 1] === "block") {
+    placeBlock(x, y, type)
+  }
+
+  else if (type[type.length - 1] === "player") {
+    placePlayer(x, y)
+  }
+
+  lastRedo = millis();
+  blocksUndone.pop()
+}
+
+function deleteArea(xStart, yStart, rows, cols) {
+  for (let x = xStart; x < rows + xStart; x++ ) {
+    for (let y = yStart; y < cols + yStart; y++) {
+      mapGrid[x][y] = NOBLOCK;
+    }
+  }
 }
 
 function setup() {
@@ -3001,7 +3091,6 @@ function setup() {
     // GUI
     redHeart, blueHeart, greenHeart, yellowHeart, emptyHeart
   };
-  let playerObject;
   
   //Initialzie blocks for dev mode and stage maker
   deadGrassLeft = [24, 24, false, "grey", "deadGrassStageL", 24, 24, true, false, false, "block"];
