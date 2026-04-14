@@ -2284,6 +2284,7 @@ class Gate {
       return
     }
 
+    fill(255)
     rect(this.x, this.y, this.sizeX, this.sizeY)
     text(this.to, this.x, this.y)
   }
@@ -2305,6 +2306,10 @@ function checkDevModePost() {
 
     else if (selected[selected.length - 1] === "mushroom") {
       displayMushroom();
+    }
+
+    else if (selected === "eraser"){
+      displayEraser();
     }
 
     //Check inputs
@@ -2408,7 +2413,7 @@ function updateAll() {
           item.isTouched();
         }
 
-        if (typeof item !== "string" && typeof item !== "number") {
+        if (typeof item !== "string" && typeof item !== "number" && item) {
           item.display();
         }
       }
@@ -2733,6 +2738,7 @@ function displayMushroom() {
 }
 
 function handleDeletes(gridX, gridY){
+  console.log(mapGrid[gridX][gridY])
   if (mapGrid[gridX][gridY]  === player) {
     deleteArea(gridX, gridY - 1, 1, 3);
   }
@@ -2747,6 +2753,9 @@ function handleDeletes(gridX, gridY){
   }
   else if (mapGrid[gridX][gridY] === "mushroom") {
     deleteArea(gridX, gridY - 1, 1, 2);
+  }
+  else {
+    mapGrid[gridX][gridY] = NOBLOCK
   }
 }
 
@@ -2801,8 +2810,8 @@ function displayEraser(){
   let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
-  let gridX = givenX || Math.floor(worldX/cellSize);
-  let gridY = givenY || Math.floor(worldY/cellSize);
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
 
   //Return early if no spot there
   if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
@@ -2814,6 +2823,7 @@ function displayEraser(){
 
   fill(255, 0, 0, 30)
   rect(drawX, drawY, 24, 24)
+  noFill();
 }
 
 function deleteBlock(givenX, givenY){
@@ -2825,13 +2835,15 @@ function deleteBlock(givenX, givenY){
   let gridY = givenY || Math.floor(worldY/cellSize);
 
   //Return early if no spot there
-  if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
+  if (!mapGrid[gridX] || !mapGrid[gridX][gridY]) {
     return;
   }
 
-  handleDeletes(gridX, gridY)
+  let item = mapGrid[gridX][gridY]
+  console.log(mapGrid[gridX][gridY])
+  blocksPlaced.push(["erase", item, gridX, gridY])
 
-  blocksPlaced.push(["delete", mapGrid[gridX][gridY]], gridX, gridY)
+  handleDeletes(gridX, gridY)
   mapGrid[gridX][gridY] = NOBLOCK
 }
 
@@ -2983,6 +2995,9 @@ function placePlayer(givenX, givenY){
 
   //Get rid of the player from blockspalced table if there is one
   for (let i = blocksPlaced.length - 1; i >= 0; i--) {
+    if (!blocksPlaced[i]) {
+      return
+    }
     let type = blocksPlaced[i][2]
     //The last item in the type array is the actual type of object it is
     if (type[type.length - 1] === "player") {
@@ -3040,20 +3055,24 @@ function placeObject() {
       placeMultipleObjects("block");
     }
 
-    if (selected[selected.length - 1] === "player") {
+    else if (selected[selected.length - 1] === "player") {
       placePlayer();
     }
 
-    if (selected[selected.length - 1] === "hurtBlock") {
+    else if (selected[selected.length - 1] === "hurtBlock") {
       placeMultipleObjects("hurtBlock")
     }
 
-    if (selected[selected.length - 1] === "mushroom") {
+    else if (selected[selected.length - 1] === "mushroom") {
       placeMultipleObjects("mushroom")
     }
 
-    if (selected[selected.length - 1] === "gate") {
+    else if (selected[selected.length - 1] === "gate") {
       placeGate()
+    }
+
+    else if (selected === "eraser") {
+      deleteBlock()
     }
   }
 }
@@ -3076,17 +3095,47 @@ function moveCamera() {
 //Utility functions for stage building (undo, copy and paste ect)
 function undo(){
   let lastBlock = blocksPlaced[blocksPlaced.length - 1]
-  //Different handling if this is for a delete
-  if (lastBlock[0] === "eraser") {
-    let item = lastBlock[1]
-    let x = lastBlock[2]
-    let y = lastBlock[3]
-    
-  }
 
   //Return if blocksPlaced is empty
   if (!blocksPlaced[0] || millis() - lastUndo < 60) {
     return;
+  }
+
+  //Different handling if this is for a delete
+  if (lastBlock[0] === "erase") {
+    console.log(lastBlock)
+    let item = lastBlock[1]
+    let x = lastBlock[2]
+    let y = lastBlock[3]
+    
+    if (item === "player1") {
+      placePlayer(x, y + 1)
+    }
+
+    else if (item === "player2") {
+      placePlayer(x, y - 1)
+    }
+
+    else if (item instanceof Player){
+      placePlayer(x, y)
+    }
+
+    else if (item === "mushroom") {
+      placeMushroom(x, y)
+    }
+
+    else if (item instanceof Mushroom) {
+      placeMushroom(x, y +1)
+    }
+
+    else {
+      mapGrid[x][y] = item;
+    }
+    
+    blocksPlaced.pop()
+    blocksUndone.push(["erase", item, x, y])
+    lastUndo = millis()
+    return
   }
 
   let x = lastBlock[0]
@@ -3117,11 +3166,23 @@ function undo(){
 }
 
 function redo() {
+  let lastBlock = blocksUndone[blocksUndone.length - 1]
+
   if (!blocksUndone[0] || millis() - lastRedo < 150) {
     return;
   }
 
-  let lastBlock = blocksUndone[blocksUndone.length - 1]
+  if (lastBlock && lastBlock[0] === "erase") {
+    console.log(lastBlock)
+    let item = lastBlock[1]
+    let x = lastBlock[2]
+    let y = lastBlock[3]
+
+    handleDeletes(x, y)
+    blocksPlaced.push(blocksUndone.pop())
+    lastRedo = millis()
+    return
+  }
 
   let x = lastBlock[0]
   let y = lastBlock[1]
@@ -3354,6 +3415,8 @@ function loadStage(stage){
         );
         player = savedPlayer
         newMap[x][y] = player
+        newMap[x][y - 1] = "player1"
+        newMap[x][y + 1] = "player2"
         entities.push(savedPlayer)
       }
 
