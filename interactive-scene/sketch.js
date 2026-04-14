@@ -30,16 +30,38 @@ let platforms = [];
 let entities = [];
 let brObjects = [];
 let gates = [];
-let stages;
-let currentStage = 0;
+let currentStage;
 let screenShake = 0;
 let mapScale = 1.7;
+
+//For stages and stage creator
+let internalStages = {}
+let userStages = {}
+let gameMode = "menu"
+let currentEditingStage = null
+
+//UI Containers 
+//Main Menu
+let mainMenuContainer;
+let stageManager;
+
+//Stage editor
+let sidebarX;
+let sidebarY;
+let sidebarW = 150;
+let sidebarH;
+let sideBar;
+let saveButton;
+
+//General
+let returnToMainMenu;
 
 //Variables specific for certain functions to run
 let fadeAmount = 0;
 let fade = "none";
 let fadeRate = 10;
 
+let stage1;
 
 //Animations and sprites
 let playerButtonSheet;
@@ -86,6 +108,7 @@ let deadGrassStageL;
 let deadGrassStageM;
 let deadGrassStageR;
 let spikeUp;
+let gateImg;
 
 //GUI
 let redHeart;
@@ -145,6 +168,7 @@ function preload() {
   stoneStageL = loadImage("PropsTextures/stoneStageLeft.png");
   stoneStageR = loadImage("PropsTextures/stoneStageRight.png");
   stoneStageM = loadImage("PropsTextures/stoneStageMiddle.png");
+  gateImg = loadImage("PropsTextures/portal.png")
 
   //Breakable objects
   crate = loadImage("BreakableObjects/Crate.png");
@@ -161,6 +185,9 @@ function preload() {
   greenHeart = loadImage("GUI/greenHeart.png");
   yellowHeart = loadImage("GUI/yellowHeart.png");
   emptyHeart = loadImage("GUI/emptyHeart.png");
+
+  //Stages
+  stage1 = loadJSON("Myotherstage.json");
 }
 
 //list of images
@@ -176,6 +203,7 @@ let stoneStage;
 //These variables are for the stage creater(grid part of the project)
 
 //Block presets
+let eraser = "eraser"
 let deadGrassLeft;
 let deadGrassRight;
 let deadGrassMid;
@@ -188,19 +216,20 @@ let stoneP
 let dirtLeft;
 let dirtRight;
 let dirtMid;
-let sideBar;
 let spike;
 let mushroomBtn;
 let playerObject;
+let crateBtn;
+let gateBtn;
+let gateInput;
 
 //Grid configs
 let mapGrid = [];
 let cellSize = 24;
-let totalCols = 100;
-let totalRows = 100;
+let totalCols = 50;
+let totalRows = 50;
 let createdStages = [];
-let selected;
-let inDevMode = false;
+let selected = "none"
 let blocksPlaced = [];
 let blocksUndone = [];
 let lastUndo = 0;
@@ -209,7 +238,157 @@ let lastSizeChange = 0;
 let objectLibrary;
 let rows = 1;
 let cols = 1;
+let canPlace = true
 
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  
+  rectMode(CENTER);
+  imageMode(CENTER);
+  noSmooth();
+
+  groundLevel = height - floorHeight;
+  mapGrid = createGrid(totalCols, totalRows)
+  sidebarX = width * 0.05;
+  sidebarY = height * 0.25;
+  sidebarH = height / 2;
+
+  initializeTables();
+
+  //Load stages the player has made
+  let savedData = localStorage.getItem("platformer_userStages")
+  if (savedData) {
+    userStages = JSON.parse(savedData)
+  }
+  else {
+    userStages = {}
+    localStorage.setItem("platformer_userStages", "{}")
+  }
+
+  player = new Player(width/2, height/2)
+  entities.push(player)
+
+  setUpGUI();
+  createMenuUI();
+  stageManagerUI();
+}
+
+function draw() {
+  background(245, 245, 220);
+
+  scale(mapScale);
+  drawBackground();
+  checkDevModePre();
+
+  if (gameMode !== "menu" ) {
+    push();
+
+    //Shake screen at screenShake pixels randomly in any direction
+    let screenShakeX = 0;
+    let screenShakeY = 0;
+
+    //Shake screen if screenshake is above 0.1 (screenshake is the magnitude)
+
+    translate(cameraX + screenShakeX, cameraY + screenShakeY);
+
+    checkDevModePost();
+  
+    updateAll();
+    pop();
+
+    if (gameMode === "editor") {
+      drawTexts();
+    }
+    
+
+    handleFade();
+  }
+}
+
+function drawTexts(){
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = Math.floor(worldX/cellSize);
+  let gridY = Math.floor(worldY/cellSize);
+
+    //In game position
+    let drawY = gridY * cellSize + cellSize/2;
+    let drawX = gridX * cellSize + cellSize/2;
+
+    stroke(255, 255, 255)
+    textSize(22)
+
+    text(drawX, width * 0.03, height * 0.05)
+    text(drawX, width * 0.03, height * 0.1)
+  
+    //It seems like a magic number because I expect half way to be *0.5, but its not acting that way? (0.25)
+    text((currentEditingStage), width * 0.25, height * 0.05)
+}
+
+//Inputs
+function keyPressed() {
+  
+
+  if (key === "e") {
+    selected = eraser
+  }
+
+  if (gameMode === "editor") {
+    return;
+  }
+
+  if (key === " ") {
+    player.jump();
+    player.inputBuffers.jump = millis();
+    player.pressedS = 0;
+  }
+
+  if (key === "w") {
+    player.jump();
+    player.inputBuffers.jump = millis();
+    player.pressedS = 0;
+  }
+
+  if (keyCode === SHIFT) {
+    player.roll();
+    player.inputBuffers.roll = millis();
+    player.pressedS = 0;
+  }
+
+  //For looking down
+  if (key === "s" && player.grounded) {
+    player.phaseCurrentPlatform();
+    player.pressedS = millis();
+  }
+
+  if (key === "f") {
+    player.block();
+  }
+}
+
+//When the S key is released, fix camera
+function keyReleased() {
+  if (key === "s") {
+    player.pressedS = 0;
+  }
+}
+
+//When mouse is pressed attack
+function mousePressed() {
+  if (gameMode === "editor") {
+    return;
+  }
+
+  player.hit();
+  player.inputBuffers.punch = millis();
+}
+
+function mouseReleased(){
+  canPlace = true
+}
 
 //Humanoid class which includes anything all player/playerlike entities
 class Humanoid {
@@ -357,10 +536,11 @@ class Player extends Humanoid {
     this.hitItems = [];
     this.alrHit = [];
     this.pressedS = 0;
+    this.type = "player"
 
     //Animations
-    this.frameWidth = 0;
-    this.frameHeight = 0;
+    this.frameWidth = 128;
+    this.frameHeight = 35;
     this.currentSheet = 0;
 
     //Attacks and cooldowns
@@ -404,6 +584,7 @@ class Player extends Humanoid {
     };
 
     //Table of spritesheets
+    //The magic numbers here are generally derived from croppign the image and checking its lengths on a image editor
     this.sprites = {
       idle: {
         sheet: this.idleSheet,
@@ -594,7 +775,7 @@ class Player extends Humanoid {
         let accel = this.speed;
         this.directionFacing = this.moveDir === 1 ? "right" : "left";
 
-        //Make sure decay of xVel doesn't cause speed to drop below walk speed (for roll walking)
+        //Make sure decay of xVel doesn"t cause speed to drop below walk speed (for roll walking)
         if (abs(this.xVel) > accel) {
           let resultSpeed = Math.max(abs(this.xVel), accel);
           this.xVel = resultSpeed * Math.sign(this.xVel);
@@ -681,7 +862,7 @@ class Player extends Humanoid {
     }
 
     //If grounded and standing still Idle
-    else if (this.grounded && this.xVel === 0) {
+    else if (this.grounded && this.xVel === 0 && this.yVel === 0) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
     }
@@ -703,7 +884,6 @@ class Player extends Humanoid {
 
   //Run every frame to update state/anims/inputs
   update() {
-    
     //Reset animation frame
     if (this.actionState !== this.lastActionState) {
       this.currentFrame = 0;
@@ -780,7 +960,7 @@ class Player extends Humanoid {
     }
   }
 
-  //Check input buffers (tries to run the input)
+  //Check input buffers (tries to run the input until its possible to give quicker game feel)
   checkInputBuffs() {
     if (millis() - this.inputBuffers.jump < this.bufferThreshold) {
       this.jump();
@@ -806,7 +986,7 @@ class Player extends Humanoid {
     this.currentSheet = anim.sheet;
     this.totalImage = anim.totalFrames;
 
-    //Make origin at player's current position to flip player image when neccesary
+    //Make origin at player"s current position to flip player image when neccesary
     push();
     translate(this.x, this.y);
 
@@ -819,7 +999,7 @@ class Player extends Humanoid {
       let lastFrame = this.currentFrame;
       this.currentFrame = (this.currentFrame + 1) % anim.totalFrames;
 
-      //If animation shouldn't loop, and isn't one time, hold last frame
+      //If animation shouldn"t loop, and isn"t one time, hold last frame
       if (this.currentFrame === 0 && !anim.shouldLoop && !anim.oneTime) {
         this.currentFrame = lastFrame;
       }
@@ -848,7 +1028,7 @@ class Player extends Humanoid {
     let verticalOffset = anim.charHeight * this.imageScale * this.yScale / 2;
 
     if (millis() - this.lastHitTaken < 150) {
-      drawingContext.filter = 'brightness(10) contrast(2)'; 
+      drawingContext.filter = "brightness(10) contrast(2)"; 
     }
 
     if (this.actionState === "rolling") {
@@ -1041,6 +1221,7 @@ class Mushroom extends Humanoid {
     this.attackCooldown = 1500;
     this.health = 5;
     this.directionFacing = direction || "right";
+    this.type = "mushroom"
 
     //Variables specific to entity for enemy AI
     this.startPos = startPos;
@@ -1238,7 +1419,7 @@ class Mushroom extends Humanoid {
     this.currentSheet = anim.sheet;
     this.totalImage = anim.totalFrames;
 
-    //Make origin at Mushrooms's current position to flip player image when neccesary
+    //Make origin at Mushrooms"s current position to flip player image when neccesary
     push();
     translate(this.x, this.y);
 
@@ -1260,7 +1441,7 @@ class Mushroom extends Humanoid {
         }, 250);
       }
 
-      //If animation shouldn't loop, and isn't one time, hold last frame
+      //If animation shouldn"t loop, and isn"t one time, hold last frame
       if (this.currentFrame === 0 && !anim.shouldLoop && !anim.oneTime) {
         this.currentFrame = lastFrame;
       }
@@ -1535,7 +1716,7 @@ class Platform {
     this.canClimb = canClimb;
     this.bottomBlock = bottomBlock;
     this.cantCollide = cantCollide;
-
+    this.type = "block"
   }
 
   //Display platform with texture or fallback as rectangle
@@ -1608,7 +1789,7 @@ class Platform {
   }
 
   //Check collisions with given item
-  checkcollision(item) {
+  checkCollision(item) {
     if (this.cantCollide) {
       return;
     }
@@ -1703,7 +1884,7 @@ class Platform {
         item.xVel *= 0.6;  
       }
 
-      //Only set yVel to 0 if we're not going up
+      //Only set yVel to 0 if we"re not going up
       if (item.yVel > 0) {
         item.yVel = 0;
         item.currentPlatform = this;
@@ -1716,7 +1897,7 @@ class Platform {
 
     if (
       itemBottom > this.top + FOOTOFFSET &&
-      itemTop < this.bottom - FOOTOFFSET
+      itemTop < this.bottom - FOOTOFFSET && item.actionState !== "ledgeClimb"
     ) {
       //If item runs into left of object
       if (
@@ -1766,17 +1947,19 @@ class Platform {
 class HurtBlock extends Platform{
   constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY) {
     super(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY);
+
+    this.type = "hurtBlock"
   }
 
-  checkcollision(item) {
-    if (super.checkcollision(item)){
+  checkCollision(item) {
+    if (super.checkCollision(item)){
 
       if (item instanceof Player) {
         item.respawn();
         item.gotHit();
       }
 
-      //This doesn't actually work right now as the platform collision function does not return true if it hits a mushroom (need fix)
+      //This doesn"t actually work right now as the platform collision function does not return true if it hits a mushroom (need fix)
       if (item instanceof Mushroom) {
         item.health = 0;
         item.onHit();
@@ -1852,9 +2035,7 @@ class Debris{
       this.yVel += GRAVITATIONALFORCE;
     }
     else {
-      [
-        this.rotationSpeed = 0
-      ];
+      this.rotationSpeed = 0
     }
 
     this.grounded = false;
@@ -1878,10 +2059,11 @@ class BreakableObject {
     this.y = y;
     this.sizeX = sizeX;
     this.sizeY = sizeY;
-    this.img = mainImg;
+    this.img = mainImg
     this.health = health;
     this.chunks = [];
     this.active = true;
+    this.type = "breakableObject"
 
     this.top = this.y - this.sizeY / 2;
     this.bottom = this.y + this.sizeY / 2;
@@ -1901,13 +2083,13 @@ class BreakableObject {
     if (this.health <= 0) {
 
       for (let i = 0; i < 25; i++) {
-        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, true));
+        this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, true));
       }
     }
 
     else {
       for (let i = 0; i < 5; i++) {
-        this.chunks.push(new Debris (this.x, this.y, this.img, this.sizeX, this.sizeY, false));
+        this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, false));
       }
     }
   }
@@ -1915,7 +2097,7 @@ class BreakableObject {
   //Displays object
   display() {
     if (this.active) {
-      image(this.img, this.x, this.y, this.sizeX, this.sizeY);
+      image(imageTable[this.img], this.x, this.y, this.sizeX, this.sizeY);
     }
 
     for (let i = this.chunks.length - 1; i >= 0; i--) {
@@ -1957,7 +2139,7 @@ class BreakableObject {
       item.currentPlatform = this;
       item.y = this.top - item.sizeY / 2;
 
-      //Only set yVel to 0 if we're not going up
+      //Only set yVel to 0 if we"re not going up
       if (item.yVel > 0) {
         item.yVel = 0;
         item.currentPlatform = this;
@@ -2020,6 +2202,7 @@ class Gate {
     this.toY = toY;
     this.sizeX = sizeX;
     this.sizeY = sizeY;
+    this.type = "gate"
 
     this.top = this.y - this.sizeY / 2;
     this.bottom = this.y + this.sizeY / 2;
@@ -2086,24 +2269,42 @@ class Gate {
       fade = "out";
       setTimeout(() => {
         player.yVel = 0;
-        clearStage();
-        window[this.to]();
         player.x = this.toX;
         player.y = this.toY;
+
+        let nextStage = createdStages[this.to] || userStages[this.to]
+        loadStage(nextStage)
       }, 
       500);
     }
   }
+
+  display(){
+    if (gameMode !== "editor") {
+      return
+    }
+
+    rect(this.x, this.y, this.sizeX, this.sizeY)
+    text(this.to, this.x, this.y)
+  }
 }
 
 function checkDevModePost() {
-  if (inDevMode) {
+  if (gameMode === "editor") {
     //Show transparent block to show where your block position is (position in the drawloop needs to be here)
-    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "hurtBlock") {
+    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "hurtBlock" || selected[selected.length - 1] === "platform" || selected[selected.length - 1] === "breakableObject") {
       displayBlock();
     }
     else if (selected[selected.length - 1] === "player") {
       displayPlayer();
+    }
+
+    else if (selected[selected.length - 1] === "gate") {
+      displayGate();
+    }
+
+    else if (selected[selected.length - 1] === "mushroom") {
+      displayMushroom();
     }
 
     //Check inputs
@@ -2134,11 +2335,16 @@ function checkDevModePost() {
     if (keyIsDown(18) && keyIsDown(17) && keyIsDown(188)) {
       changeSize("cols", -1)
     }
+
   }
+
+  drawGrid(totalRows, totalCols)
 }
 
-function checkDevModePre(sHoldTime) {
-  if (inDevMode === false){
+function checkDevModePre() {
+  let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
+
+  if (gameMode === "playing"){
     //Follow player with camera
     let targetX = width / 2 - player.x - 250 ;
     let targetY = height / 2 - player.y - 100; 
@@ -2154,16 +2360,8 @@ function checkDevModePre(sHoldTime) {
     //Lerp camera to target
     cameraX = lerp(cameraX, targetX, 0.1);
     cameraY = lerp(cameraY, targetY, currentLerp);
-
-    //Hide away sidebar
-    sideBar.position(-1000, -1000);
-
-    //Run all non draw related functions
-    updateAllEntities();
-    applyAllPhysics();
-    checkAllcollisions();
   }
-  else {
+  else if (gameMode === "editor"){
     //Allow player to move around world with WASD
     moveCamera();
 
@@ -2174,230 +2372,47 @@ function checkDevModePre(sHoldTime) {
     if (mouseIsPressed) {
       placeObject();
     }
-  }
-}
 
-
-function draw() {
-  background(245, 245, 220);
-
-  scale(mapScale);
-  drawBackground();
-
-  //Variable to see how long S has been held
-  let sHoldTime = player.pressedS > 0 ? millis() - player.pressedS : 0;
-
-  checkDevModePre(sHoldTime);
-
-  push();
-
-  //Shake screen at screenShake pixels randomly in any direction
-  let screenShakeX = 0;
-  let screenShakeY = 0;
-
-  //Shake screen if screenshake is above 0.1 (screenshake is the magnitude)
-
-  translate(cameraX + screenShakeX, cameraY + screenShakeY);
-
-  checkDevModePost();
-  
-  // drawAllPlatforms();
-  // drawAllEntities();
-  // drawAllBreakableObjects();
-  drawEverything();
-  checkGates();
-  pop();
-
-  //player.showGUI();
-  handleFade();
-}
-
-//Inputs
-function keyPressed() {
-  //Undo button (ctrl + Z)
-  
-  if (inDevMode) {
-    return;
-  }
-
-  if (key === " ") {
-    player.jump();
-    player.inputBuffers.jump = millis();
-    player.pressedS = 0;
-  }
-
-  if (key === "w") {
-    player.jump();
-    player.inputBuffers.jump = millis();
-    player.pressedS = 0;
-  }
-
-  if (keyCode === SHIFT) {
-    player.roll();
-    player.inputBuffers.roll = millis();
-    player.pressedS = 0;
-  }
-
-  //For looking down
-  if (key === 's' && player.grounded) {
-    player.phaseCurrentPlatform();
-    player.pressedS = millis();
-  }
-
-  if (key === "f") {
-    player.block();
-  }
-}
-
-//When the S key is released, fix camera
-function keyReleased() {
-  if (key === 's') {
-    player.pressedS = 0;
-  }
-}
-
-//When mouse is pressed attack
-function mousePressed() {
-  if (inDevMode) {
-    return;
-  }
-
-  player.hit();
-  player.inputBuffers.punch = millis();
-}
-
-//Helper function to draw small tower of oneway collision platforms
-function makeTower(x, y, amount) {
-  let spacing = 80; 
-  for (let i = 0; i < amount; i++) {
-    let floorY = y - i * spacing;
-    platforms.push(new Platform(x, floorY, 96, 9, true, "blue", stonePlatform, 24, 9, true));
   }
 }
 
 //Update all entities
-function updateAllEntities() {
-  for (let entity of entities) {
-    entity.update();
-  }
-}
-
 //Helper function to loop through entities and platforms and check collisions
-function checkAllcollisions() {
-  //Check collision with entities
-  for (let platform of platforms) {
-    for (let person of entities) {
-      platform.checkcollision(person);
-    }
-  }
-
-  //Check collision of breakable objects
-  for (let object of brObjects) {
-    for (let person of entities) {
-      object.checkCollision(person);
-    }
-  }
-
+function updateAll() {
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
-      if (mapGrid[x] && mapGrid[x][y]) {
-        if (mapGrid[x][y] instanceof Platform) {
+      let item = mapGrid[x][y]
+      if (entities.includes(mapGrid[x][y] && gameMode === "playing")){
+          item.update()
+          item.applyForces();
+
+          if (item !== player){
+            item.applyHit();
+            item.runAI();
+          }
+        }
+        
+      if (item) {
+        if (item instanceof Platform) {
           for (let entity of entities) {
-            mapGrid[x][y].checkCollision(entity);
+            item.checkCollision(entity);
           }
           for (let object of brObjects) {
             for (let chunk of object.chunks) {
-              mapGrid[x][y].checkcollision(chunk);
+              item.checkCollision(chunk);
             }
           }
         }
-      }
-      
-    }
-  }
 
-  //Check collision with debris
-  for (let platform of platforms) {
-    for (let object of brObjects) {
-      for (let chunk of object.chunks) {
-        platform.checkcollision(chunk);
-      }
-    }
-  }
+        else if (item instanceof Gate && !gameMode !== "editor") {
+          item.isTouched();
+        }
 
-  //For enemies, run their AI along with their apply hit function as that is essentially their collision
-  for (let entity of entities) {
-    if (entity !== player) {
-      entity.applyHit();
-      entity.runAI();
-    }
-  }
-}
-
-//Checks gates for if player teleporting
-function checkGates() {
-  for (let gate of gates) {
-    gate.isTouched();
-  }
-}
-
-//Draw all functions (different incase we ever need to draw one thing without the other)
-function drawAllPlatforms() {
-  for (let platform of platforms) {
-    platform.display();
-  }
-
-  for (let x = 0; x < totalRows; x++) {
-    for (let y = 0; y < totalCols; y++) {
-      if (mapGrid[x] && mapGrid[x][y]) {
-        if (mapGrid[x][y] instanceof Platform) {
-          mapGrid[x][y].display();
+        if (typeof item !== "string" && typeof item !== "number") {
+          item.display();
         }
       }
-      
     }
-  }
-}
-
-function drawEverything() {
-  for (let x = 0; x < totalRows; x++) {
-    for (let y = 0; y < totalCols; y++) {
-      if (mapGrid[x] && mapGrid[x][y]) {
-        if (typeof mapGrid[x][y] !== 'string' && typeof mapGrid[x][y] !== 'number') {
-          mapGrid[x][y].display();
-        }
-      }
-      
-    }
-  }
-}
-
-//Draw all entites
-function drawAllEntities() {
-  for (let entity of entities) {
-    entity.display();
-  }
-
-  for (let x = 0; x < totalRows; x++) {
-    for (let y = 0; y < totalCols; y++) {
-      if (mapGrid[x] && mapGrid[x][y]) {
-        mapGrid[x][y].display();
-      }
-    }
-  }
-}
-
-//Draws all breakable bojects
-function drawAllBreakableObjects() {
-  for (let object of brObjects) {
-    object.display();
-  }
-}
-
-//Helper function to apply physics of all characters
-function applyAllPhysics() {
-  for (let entity of entities) {
-    entity.applyForces();
   }
 }
 
@@ -2408,62 +2423,46 @@ function windowResized() {
 
 //function to draw a parallex background 
 function drawBackground() {
-  //adjust respective layers speed to change speed at which image moves
-  let bgX = cameraX * LAYER1SPEED % width;
-
-  image(backgroundLayer1, bgX, BACKGROUNDY, width/2, height);
-  image(backgroundLayer1, bgX + width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer1, bgX + width, BACKGROUNDY , width/2, height);
-  image(backgroundLayer1, bgX - width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer1, bgX - width, BACKGROUNDY , width/2, height);
-
-  //The aditional offset is because the light is slightly off where I want it
-  let offset = height * 0.04;
-
-  image(backgroundLayerLight, bgX, BACKGROUNDY + offset, width/2, height);
-  image(backgroundLayerLight, bgX + width/2, BACKGROUNDY + offset , width/2, height);
-  image(backgroundLayerLight, bgX + width, BACKGROUNDY + offset , width/2, height);
-  image(backgroundLayerLight, bgX - width/2, BACKGROUNDY + offset , width/2, height);
-  image(backgroundLayerLight, bgX - width, BACKGROUNDY + offset , width/2, height);
-
-  bgX = cameraX * LAYER2SPEED % width;
-  image(backgroundLayer2, bgX, BACKGROUNDY, width/2, height);
-  image(backgroundLayer2, bgX + width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer2, bgX + width, BACKGROUNDY , width/2, height);
-  image(backgroundLayer2, bgX - width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer2, bgX - width, BACKGROUNDY , width/2, height);
-
-  bgX = cameraX * LAYER3SPEED % width;
-  image(backgroundLayer3, bgX, BACKGROUNDY, width/2, height);
-  image(backgroundLayer3, bgX + width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer3, bgX + width, BACKGROUNDY , width/2, height);
-  image(backgroundLayer3, bgX - width/2, BACKGROUNDY , width/2, height);
-  image(backgroundLayer3, bgX - width, BACKGROUNDY , width/2, height);
-
-
-}
-
-//Function to create a stage based off blocks wide/tall rather than pixels
-function createStage(x, y, blocksWide, blocksTall, cantCollide, stage) {
-  let dirtH = 24 * (blocksTall - 1);
-  let grassH = 24; 
-
-  if (!stage) {
-    stage = "deadGrassStage";
+  if (gameMode === "menu"){
+    image(backgroundLayer1, width/2, height/2, width, height); 
+    image(backgroundLayerLight, width/2, height/2, width/2, height); 
   }
+  else {
+    //adjust respective layers speed to change speed at which image moves
+    let bgX = cameraX * LAYER1SPEED % width;
 
-  platforms.push(new Platform(x, y, 24 * blocksWide, dirtH, false, "brown", "dirtStage", 48, 48, true, true, cantCollide));
-  platforms.push(new Platform(x, y - dirtH / 2 - grassH / 2, grassH * blocksWide, 24, false, "brown", stage, 48, 48, true, false, cantCollide)); 
-}
+    image(backgroundLayer1, bgX, BACKGROUNDY, width/2, height);
+    image(backgroundLayer1, bgX + width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer1, bgX + width, BACKGROUNDY , width/2, height);
+    image(backgroundLayer1, bgX - width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer1, bgX - width, BACKGROUNDY , width/2, height);
 
-//Creates platform
-function createPlatform(x, y, blocksWide, theTexture) {
-  platforms.push(new Platform(x, y, 24 * blocksWide, 9, true, "blue", theTexture, 24, 9, true));
-}
+    //The aditional offset is because the light is slightly off where I want it
+    let offset = height * 0.04;
 
-//Creates breakable object
-function createBreakableObject(x, y, blocksWide, blocksTall, health) {
-  brObjects.push(new BreakableObject(x, y, 24 * blocksWide, 24 * blocksTall, crate, health));
+    image(backgroundLayerLight, bgX, BACKGROUNDY + offset, width/2, height);
+    image(backgroundLayerLight, bgX + width/2, BACKGROUNDY + offset , width/2, height);
+    image(backgroundLayerLight, bgX + width, BACKGROUNDY + offset , width/2, height);
+    image(backgroundLayerLight, bgX - width/2, BACKGROUNDY + offset , width/2, height);
+    image(backgroundLayerLight, bgX - width, BACKGROUNDY + offset , width/2, height);
+
+    bgX = cameraX * LAYER2SPEED % width;
+    image(backgroundLayer2, bgX, BACKGROUNDY, width/2, height);
+    image(backgroundLayer2, bgX + width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer2, bgX + width, BACKGROUNDY , width/2, height);
+    image(backgroundLayer2, bgX - width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer2, bgX - width, BACKGROUNDY , width/2, height);
+
+    bgX = cameraX * LAYER3SPEED % width;
+    image(backgroundLayer3, bgX, BACKGROUNDY, width/2, height);
+    image(backgroundLayer3, bgX + width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer3, bgX + width, BACKGROUNDY , width/2, height);
+    image(backgroundLayer3, bgX - width/2, BACKGROUNDY , width/2, height);
+    image(backgroundLayer3, bgX - width, BACKGROUNDY , width/2, height);
+
+
+  }
+  
 }
 
 //Gets item in an area (for a hitbox type function)
@@ -2526,13 +2525,6 @@ function checkIfPath(x, y) {
   return false; // Point is in the air
 }
 
-//Clears all entities and platforms other then players
-function clearStage() {
-  entities = [player];
-  platforms =  [];
-  brObjects = [];
-}
-
 function handleFade() {
   //If we are fading out, fade in once done
   if (fade === "out") {
@@ -2575,27 +2567,68 @@ function createGrid(cols, rows) {
   return grid;
 }
 
-function dev() {
-  //Clear everything
-  entities = [];
-  platforms = [];
-  brObjects = [];
+function drawGrid(cols, rows){
+  push();
+  noFill();
+  stroke(255, 255, 255, 15)
+  strokeWeight(2)
 
-  inDevMode = !inDevMode;
-  mapGrid = createGrid(totalCols, totalRows);
-
-  if (!inDevMode) {
-    window[currentStage]();
-    entities.push(player);
+  for (let x = 0; x < rows; x++) {
+    for (let y = 0; y < cols; y++){
+      rect(12 + x * cellSize, 12 + y* cellSize, cellSize, cellSize)
+    }
   }
 
-  //Reset player
-  player.actionState = "idle";
-  player.xScale = 1;
-  player.yScale = 1;
+  pop();
+}
+
+function dev() {
+  //Clear everything
+  gameMode = "editor" 
+
+  sideBar.show();
+  sideBar.style("display", "grid");
+
+  saveButton.show();
 }
 
 function displayBlock(givenX, givenY) {
+  //The reason things like worldX is used is to make up for the difference between where the mouse is on the screen
+  // and where the mouse is in the world relative to where the camera is looking
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  let baseGridX = Math.floor(worldX/cellSize);
+  let baseGridY = Math.floor(worldY/cellSize);
+
+  for (let x = 0; x < rows; x++) {
+    for(let y = 0; y < cols; y++) {
+      let gridX = baseGridX + x
+      let gridY = baseGridY + y
+
+      if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
+        continue;
+      }
+
+      tint(255, 127);
+
+      let displayImage = imageTable[selected[4]];
+      let drawX = gridX * cellSize + cellSize/2;
+      let drawY;
+      if (selected[selected.length - 1] === "platform") {
+        drawY = gridY * cellSize;
+      }
+      else {
+        drawY = gridY * cellSize + cellSize/2;
+      }
+
+      image(displayImage, drawX, drawY, selected[0], selected[1]);
+      noTint();
+    }
+  }
+}
+
+function displayGate(){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
 
@@ -2609,11 +2642,21 @@ function displayBlock(givenX, givenY) {
       let gridX = baseGridX + x
       let gridY = baseGridY + y
 
-      let displayImage = imageTable[selected[4]];
-      let drawX = gridX * cellSize + cellSize/2;
-      let drawY = gridY * cellSize + cellSize/2;
+      if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
+        continue;
+      }
 
-      image(displayImage, drawX, drawY, selected[0], selected[1]);
+      let drawX = gridX * cellSize + cellSize/2;
+      let drawY;
+
+      if (selected[selected.length - 1] === "platform") {
+        drawY = gridY * cellSize;
+      }
+      else {
+        drawY = gridY * cellSize + cellSize/2;
+      }
+
+      rect(drawX, drawY, 24, 24)
       noTint();
     }
   }
@@ -2656,31 +2699,37 @@ function displayMushroom() {
   let worldY = mouseY/mapScale - cameraY;
 
   //Position on grid
-  let gridX = Math.floor(worldX/cellSize);
-  let gridY = Math.floor(worldY/cellSize);
+  let baseGridX = Math.floor(worldX/cellSize);
+  let baseGridY = Math.floor(worldY/cellSize) - 2;
 
-  if (!mapGrid[gridX]) {
-    return;
+  for (let x = 0; x < rows; x++) {
+    for(let y = 0; y < cols; y++) {
+      if (y % 2 !== 0) continue;
+      let gridY = baseGridY + y
+      let gridX = baseGridX + x
+
+      if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
+        continue;
+      }
+      
+      tint(255, 127);
+      
+      let drawX = gridX * cellSize + cellSize/2;
+      let drawY = gridY * cellSize + cellSize;
+      image(
+        mushroomIdle,
+        drawX,
+        drawY,
+        80 * 1.5,
+        64 * 1.5,
+        0,
+        0,
+        80,
+        64
+      );
+      noTint();
+    }
   }
-
-  let drawX = gridX * cellSize + cellSize/2;
-  let drawY = gridY * cellSize + cellSize/2;
-
-  tint(255, 127);
-
-  image(
-    mushroomIdle,
-    drawX,
-    drawY,
-    this.frameWidth * this.imageScale * this.xScale,
-    this.frameHeight * this.imageScale * this.yScale,
-    this.xCrop,
-    anim.yOffset,
-    this.frameWidth,
-    anim.charHeight
-  );
-  
-  noTint();
 }
 
 function handleDeletes(gridX, gridY){
@@ -2701,7 +2750,7 @@ function handleDeletes(gridX, gridY){
   }
 }
 
-function placeBlock(givenX, givenY, givenSelected) {
+function placeBlock (givenX, givenY, givenSelected) {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2717,21 +2766,124 @@ function placeBlock(givenX, givenY, givenSelected) {
     return;
   }
 
-
   handleDeletes(gridX, gridY)
 
+  let drawY;
   let drawX = gridX * cellSize + cellSize/2;
-  let drawY = gridY * cellSize + cellSize/2;
+  if (usedSelected[usedSelected.length - 1] === "platform") {
+    drawY = gridY * cellSize;
+  }
+  else {
+    drawY = gridY * cellSize + cellSize/2;
+  }
+  
 
   //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
   //The mapgrid array is using the new system 
-  let platform = new Platform(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[2], usedSelected[3], usedSelected[4], usedSelected[5], usedSelected[6], usedSelected[7], usedSelected[8], usedSelected[9]);
+  let platform;
+  if (usedSelected[usedSelected.length - 1] === "block" || usedSelected[usedSelected.length - 1] === "platform" ) {
+    platform = new Platform(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[2], usedSelected[3], usedSelected[4], usedSelected[5], usedSelected[6], usedSelected[7], usedSelected[8], usedSelected[9]);
+  }
 
-  //Push platform to list of blocks placed if it isn't literally the same block already there
+  else if (usedSelected[usedSelected.length - 1] === "breakableObject"){
+    platform = new BreakableObject(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[4], usedSelected[9])
+  }
+
+  //Push platform to list of blocks placed if it isn"t literally the same block already there
   if (platform && platform.img !== mapGrid[gridX][gridY].img) {
     blocksPlaced.push([gridX, gridY, usedSelected]);
     mapGrid[gridX][gridY] = platform;
   }
+}
+
+function displayEraser(){
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
+
+  //Return early if no spot there
+  if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
+    return;
+  }
+
+  let drawY = gridY * cellSize + cellSize/2;
+  let drawX = gridX * cellSize + cellSize/2;
+
+  fill(255, 0, 0, 30)
+  rect(drawX, drawY, 24, 24)
+}
+
+function deleteBlock(givenX, givenY){
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
+
+  //Return early if no spot there
+  if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
+    return;
+  }
+
+  handleDeletes(gridX, gridY)
+
+  blocksPlaced.push(["delete", mapGrid[gridX][gridY]], gridX, gridY)
+  mapGrid[gridX][gridY] = NOBLOCK
+}
+
+function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
+  //Get the position of the actual world relative to the camera
+  let worldX = mouseX/mapScale - cameraX;
+  let worldY = mouseY/mapScale - cameraY;
+
+  //Position on grid
+  let gridX = givenX || Math.floor(worldX/cellSize);
+  let gridY = givenY || Math.floor(worldY/cellSize);
+
+  //Return early if no spot there
+  if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
+    return;
+  }
+
+  handleDeletes(gridX, gridY)
+
+  let drawY = gridY * cellSize + cellSize/2;
+  let drawX = gridX * cellSize + cellSize/2;
+  
+
+  let destination
+  let toX
+  let toY
+  if (destination === null || destination === "") return;
+
+  if (!givenDest){
+    if (!canPlace) {
+      return
+    }
+    console.log("Hello")
+    destination = prompt("Where does your gate lead to (Enter a valid stage name you have created)")
+    toX = Number(prompt("When coming out the otherside where should your player end up X (should be a number)"))
+    toY = Number(prompt("When coming out the otherside where should you player up Y (should be a number)"))
+    
+  }
+
+  else {
+    destination = givenDest
+    toX = givenToX
+    toY = givenToY
+  }
+  
+  canPlace = false
+
+  let gate = new Gate(drawX, drawY, currentEditingStage, destination, 24, 24, toX, toY);
+
+  //Push platform to list of blocks placed if it isn"t literally the same block already there
+  blocksPlaced.push([gridX, gridY, gateBtn, destination, toX, toY]);
+  mapGrid[gridX][gridY] = gate;
 }
 
 function placeMultipleObjects(type){
@@ -2748,7 +2900,18 @@ function placeMultipleObjects(type){
 
   let targetFunction = placementFunctions[type]
 
-  if (targetFunction){
+  if (type === "mushroom" && targetFunction) {
+    for (let x = 0; x < rows; x++) {
+      for (let y = 0; y < cols; y++){
+        if (y % 2 !== 0) {
+          continue
+        }
+        targetFunction(baseGridX + x, baseGridY + y, )
+      }
+    }  
+  }
+
+  else if (targetFunction && type !== "mushroom"){
     for (let x = 0; x < rows; x++) {
       for (let y = 0; y < cols; y++){
         targetFunction(baseGridX + x, baseGridY + y, )
@@ -2805,7 +2968,7 @@ function placePlayer(givenX, givenY){
   //Get rid of the player object if it already exists
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
-      if (mapGrid[x][y] instanceof Player) {
+      if (mapGrid[x][y] instanceof Player || mapGrid[[x][y] === "player1" || mapGrid[x][y] === "player2"]) {
         mapGrid[x][y] = NOBLOCK;
       }
     }
@@ -2819,7 +2982,7 @@ function placePlayer(givenX, givenY){
   mapGrid[gridX][gridY] = player;
 
   //Get rid of the player from blockspalced table if there is one
-  for (let i = blocksPlaced.length - 1; i > 0; i--) {
+  for (let i = blocksPlaced.length - 1; i >= 0; i--) {
     let type = blocksPlaced[i][2]
     //The last item in the type array is the actual type of object it is
     if (type[type.length - 1] === "player") {
@@ -2828,7 +2991,6 @@ function placePlayer(givenX, givenY){
   }
 
   blocksPlaced.push([gridX, gridY, playerObject])
-
   player.x = drawX;
   player.y = drawY;
 }
@@ -2863,9 +3025,18 @@ function placeMushroom(givenX, givenY){
 }
 
 function placeObject() {
-  if (inDevMode) {
+  if (gameMode === "editor") {
+
+    if (
+    mouseX >= sidebarX &&
+    mouseX <= sidebarX + sidebarW &&
+    mouseY >= sidebarY &&
+    mouseY <= sidebarY + sidebarH + 100) {
+    return
+  }
+
     //Check what type of object this is
-    if (selected[selected.length - 1] === "block") {
+    if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "platform" || selected[selected.length - 1] === "breakableObject") {
       placeMultipleObjects("block");
     }
 
@@ -2879,6 +3050,10 @@ function placeObject() {
 
     if (selected[selected.length - 1] === "mushroom") {
       placeMultipleObjects("mushroom")
+    }
+
+    if (selected[selected.length - 1] === "gate") {
+      placeGate()
     }
   }
 }
@@ -2900,15 +3075,24 @@ function moveCamera() {
 
 //Utility functions for stage building (undo, copy and paste ect)
 function undo(){
+  let lastBlock = blocksPlaced[blocksPlaced.length - 1]
+  //Different handling if this is for a delete
+  if (lastBlock[0] === "eraser") {
+    let item = lastBlock[1]
+    let x = lastBlock[2]
+    let y = lastBlock[3]
+    
+  }
+
   //Return if blocksPlaced is empty
   if (!blocksPlaced[0] || millis() - lastUndo < 60) {
     return;
   }
 
-  let lastBlock = blocksPlaced[blocksPlaced.length - 1]
   let x = lastBlock[0]
   let y = lastBlock[1]
   let type = lastBlock[2]
+  let items = ["block", "hurtBlock", "breakableObject", "gate", "platform"]
   if (type[type.length - 1] === "mushroom") {
     mapGrid[x][y] = NOBLOCK;
     mapGrid[x][y - 1] = NOBLOCK;
@@ -2925,13 +3109,7 @@ function undo(){
     blocksUndone.push(blocksPlaced.pop())
   }
 
-  else if (type[type.length - 1] === "block") {
-    lastUndo = millis();
-    mapGrid[x][y] = NOBLOCK;
-    blocksUndone.push(blocksPlaced.pop())
-  }
-
-  else if (type[type.length - 1] === "hurtBlock") {
+  else if (items.includes(type[type.length - 1])) {
     lastUndo = millis();
     mapGrid[x][y] = NOBLOCK;
     blocksUndone.push(blocksPlaced.pop())
@@ -2948,13 +3126,18 @@ function redo() {
   let x = lastBlock[0]
   let y = lastBlock[1]
   let type = lastBlock[2]
+  let destination = lastBlock[3]
+  let toX = lastBlock[4]
+  let toY = lastBlock[5]
+
+  console.log(lastBlock)
 
   //Place block back accordingly
   if (type[type.length - 1] === "mushroom") {
     placeMushroom(x, y)
   }
 
-  else if (type[type.length - 1] === "block") {
+  else if (type[type.length - 1] === "block" || type[type.length - 1] === "platform" || type[type.length - 1] === "breakableObject") {
     placeBlock(x, y, type)
   }
 
@@ -2964,6 +3147,10 @@ function redo() {
 
   else if (type[type.length - 1] === "player") {
     placePlayer(x, y)
+  }
+
+  else if (type[type.length - 1] === "gate"){
+    placeGate(x, y, destination, toX, toY)
   }
 
   lastRedo = millis();
@@ -3021,7 +3208,7 @@ function initializeTables() {
     deadGrassPlatformR, stonePlatformL, stonePlatformM, stonePlatformR,
     dirtStageL, dirtStageR, dirtStageM, deadGrassStageL,
     deadGrassStageM, deadGrassStageR, spikeUp, stoneStageL,
-    stoneStageR, stoneStageM,
+    stoneStageR, stoneStageM, gateImg,
 
     //Tables
     deadGrassPlatform, stonePlatform, dirtStage, deadGrassStage, stoneStage,
@@ -3047,12 +3234,14 @@ function initializeTables() {
   playerObject = [100, 100, null, null, "playerButtonSheet", null, null, null, null, null, "player"];
   spike = [24, 24, false, "grey", "spikeUp", 24, 24, true, false, false, "hurtBlock"];
   mushroomBtn = [100, 100, null, null, "mushroomButtonImg", null, null, null, null, null, "mushroom"];
-  deadGrassPLeft = [24, 9, false, "grey", "deadGrassPlatformL", 24, 9, true, false, false, "block"]
-  deadGrassPRight = [24, 9, false, "grey", "deadGrassPlatformR", 24, 9, true, false, false, "block"]
-  deadGrassPMid = [24, 9, false, "grey", "deadGrassPlatformM", 24, 9, true, false, false, "block"]
-  stonePL = [24, 9, false, "grey", "stonePlatformL", 24, 9, true, false, false, "block"]
-  stonePR = [24, 9, false, "grey", "stonePlatformR", 24, 9, true, false, false, "block"]
-  stoneP = [24, 9, false, "grey", "stonePlatformM", 24, 9, true, false, false, "block"]
+  deadGrassPLeft = [24, 9, true, "grey", "deadGrassPlatformL", 24, 9, true, false, false, "platform"]
+  deadGrassPRight = [24, 9, true, "grey", "deadGrassPlatformR", 24, 9, true, false, false, "platform"]
+  deadGrassPMid = [24, 9, true, "grey", "deadGrassPlatformM", 24, 9, true, false, false, "platform"]
+  stonePL = [24, 9, true, "grey", "stonePlatformL", 24, 9, true, false, false, "platform"]
+  stonePR = [24, 9, true, "grey", "stonePlatformR", 24, 9, true, false, false, "platform"]
+  stoneP = [24, 9, true, "grey", "stonePlatformM", 24, 9, true, false, false, "platform"]
+  crateBtn = [24, 24, false, "grey", "crate", 24, 24, true, false, 3, "breakableObject"]
+  gateBtn = [24, 24, false, "grey", "gateImg", 24, 24, true, false, false, "gate"]
 
   //Make table containing all object presets
   objectLibrary = [
@@ -3071,59 +3260,326 @@ function initializeTables() {
     stonePL,
     stoneP,
     stonePR,
+    crateBtn,
+    gateBtn
   ];
 }
 
 function setUpGUI() {
   //Setting up our sidebar for the devmode
-  sideBar = createDiv('');
-  sideBar.position(width * 0.05, height * 0.25);
-  sideBar.size(150, height/2);
-  sideBar.style('background', "#7a0a0a92");
+  sideBar = createDiv("");
+  sideBar.position(sidebarX, sidebarY);
+  sideBar.size(sidebarW, sidebarH);
+  sideBar.style("background", "rgba(40, 0, 0, 0.95)");
   sideBar.style("overflow-y", "auto"); //Makes it scrollable
-  sideBar.style("display", "grid"); //Meets size of contents
+  sideBar.style("display", "grid"); //Make invisible for now
   sideBar.style("flex-direction", "column");
   sideBar.style("padding", "10px");
   sideBar.style("justify-content", "center");
-  sideBar.style('gap', '10px');
+  sideBar.style("gap", "25px");
+  sideBar.style("border", "1px solid white");
+  sideBar.hide();
+
+  saveButton = createButton("SAVE")
+  saveButton.style("font-family", "Courier New", "monospace"); //Switch to pixel art font once downloaded
+  saveButton.style("font-weight", "bold");
+  saveButton.style('font-size', "25px")
+  saveButton.position(sidebarX, height * 0.8)
+  saveButton.size(sidebarW, 50)
+  saveButton.style("background", "rgba(40, 0, 0, 0.95)");
+  saveButton.style("color", "white");
+  saveButton.style("border", "1px solid white");
+  saveButton.hide();
+
+  saveButton.mousePressed(() => {
+    //Save a structured clone of whatever the current map is to user stages
+    if (userStages[currentEditingStage] ){
+      userStages[currentEditingStage] = structuredClone(mapGrid)
+      localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
+    }
+  });
 
   for (let object of objectLibrary) {
     button = createButton("");
     button.parent(sideBar);
     button.size(100, 100);
-    button.style('background-color', "transparent");
-    button.style('border', 'none');
+    button.style("background-color", "transparent");
     
     //Get the corresponding image for our button and convert to form which the button can use
     let imageItem = imageTable[object[4]];
     let convertedData = imageItem.canvas.toDataURL();
 
     //Add image
-    button.style('background-image', `url(${convertedData})`);
-    button.style('background-size', 'cover');
-    button.style('image-rendering', 'pixelated');
+    button.style("background-image", `url(${convertedData})`);
+    button.style("background-size", "cover");
+    button.style("image-rendering", "pixelated");
 
     button.mousePressed(function () {
       selected = object;
     });
   }
 }
+function loadStage(stage){
+  currentStage = stage
+  let newMap = createGrid(totalRows, totalCols)
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
+  //Clear old stuff
+  entities = []
 
-  groundLevel = height - floorHeight;
+  for (let x = 0; x < totalRows; x++){
+    for (let y = 0; y < totalCols; y++){
+      let item = stage[x][y]
+      if (item.type === "block" || item.type === "platform") {
+        newMap[x][y] = new Platform(
+          item.x, 
+          item.y, 
+          item.sizeX, 
+          item.sizeY, 
+          item.oneWay, 
+          item.color, 
+          item.img, 
+          item.tilesizeX, 
+          item.tilesizeY, 
+          item.canClimb, 
+          item.bottomBlock, 
+          item.cantCollide, 
+          item.type
+        );
+      }
+
+      if (item.type === "player") {
+        let savedPlayer = new Player(
+          item.x,
+          item.y
+        );
+        player = savedPlayer
+        newMap[x][y] = player
+        entities.push(savedPlayer)
+      }
+
+      if (typeof item === "string") {
+        newMap[x][y] = item;
+      }
+
+      if (item.type === "breakableObject") {
+        newMap[x][y] = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health)
+      }
+
+      if (item.type === "gate") {
+        newMap[x][y] = new Gate(item.x, item.y, item.from, item.to, item.sizeX, item.sizeY, item.toX, item.toY)
+      }
+
+      if (item.type === "mushroom") {
+        let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing)
+        newMap[x][y] = shroom
+      }
+    }
+  }
+
+  console.log(newMap)
+  return newMap
+}
+
+function createMenuUI(){
+  //Create main menu container
+  mainMenuContainer = (createDiv("").id("menu"))
+
+  //Position on bottom left
+  mainMenuContainer.style("position", "absolute");
+  mainMenuContainer.style("bottom", "100px");
+  mainMenuContainer.style("left", "75px");
+  mainMenuContainer.style("display", "flex");
+  mainMenuContainer.style("flex-direction", "column"); // Stack vertically
+  mainMenuContainer.style("gap", "50px");
+
+  //Button to continue from wherever player last left off in campaign/main game
+  let continueBtn = createButton("CONTINUE")
+  continueBtn.parent(mainMenuContainer)
+  styleMenuButton(continueBtn)
   
-  rectMode(CENTER);
-  imageMode(CENTER);
-  noSmooth();
+  //Continue player from wherever their last stage was when pressed (or from save point in the future)
+  continueBtn.mousePressed(() => {
+    loadCampaign();
+  })
 
-  initializeTables();
+  //Dev button or to make a stage
+  let devButton = createButton("DEVELOP")
+  devButton.parent(mainMenuContainer)
+  styleMenuButton(devButton)
 
-  selected = deadGrassLeft;
+  //Open stage manager when pressed
+  devButton.mousePressed(() => {
+    stageManager.show();
+  })
+}
 
-  //Load player and stage
-  player = new Player(width / 2, groundLevel - 150);
+//Function to give main menu buttons consistent look
+function styleMenuButton(btn) {
+  //Bg customizations
+  btn.style("padding", "10px 20px");
+  btn.style("font-size", "75px");
+  btn.style("cursor", "pointer");
+  btn.style("background", "none");
+  btn.style("border", "none");
 
-  setUpGUI();
+  //Text customizations
+  btn.style("font-family", "Courier New", "monospace"); //Switch to pixel art font once downloaded
+  btn.style("font-weight", "bold");
+
+  //Makes the button ease into changes for tween effect
+  btn.style("transition", "transform 0.2s ease-out, color 0.2s");
+
+  //Make hover anims
+  btn.mouseOver(() => {
+    btn.style("color", "#273C75")
+    btn.style("transform", "scale(1.2)")
+  })
+
+  //Reset 
+  btn.mouseOut(() => {
+    btn.style("color", "#000000")
+    btn.style("transform", "scale(1)")
+  })
+}
+
+function stageManagerUI(){
+  stageManager = createDiv("").id("stageManager")
+  stageManager.style("position", "absolute");
+  stageManager.style("top", "50%");
+  stageManager.style("left", "50%");
+
+  //Centers the div relative to its parent
+  stageManager.style("transform", "translate(-50%, -50%)");
+
+  //Customizations
+  stageManager.style("background", "#290e4e61")
+  stageManager.style("border", "5px solid black")
+  stageManager.style("border-color", "#000000")
+  stageManager.style("padding", "20px")
+  stageManager.style("text-align", "center")
+  stageManager.style("font-family", "Courier New", "monospace");
+  stageManager.style("font-size", "50px")
+
+  //Hide until dev button pressed
+  stageManager.hide()
+  buildStageItem(stageManager)
+}
+
+//Goal is to make a list of stages with various buttons to interact with stages
+function buildStageItem(parent){
+  parent.html('') //Crucial to clear old list
+
+  //Title
+  createElement("h3", "STAGES").parent(parent);
+
+  //Creat scrollable box to contain our stagest
+
+  let scrollBox = createDiv("").parent(parent)
+  scrollBox.style("max-height", "300px")
+  scrollBox.style("overflow-y", "auto");
+  scrollBox.style("padding-right", "10px");
+  scrollBox.style("padding-bottom", "15px");
+
+  //Loop through all our existing stages and make a tab for them
+  for (let stage in userStages) {
+    let entry = createDiv("").parent(scrollBox);
+    entry.style("display", "flex");
+    entry.style("justify-content","space-between")
+    entry.style("align-items", "center");
+    entry.style("border", "5px solid black")
+    entry.style("padding", "5px");
+    
+    //label
+    createElement("span", stage).parent(entry);
+
+    //Where are buttons are held
+    let buttonGroup = createDiv("").parent(entry)
+    buttonGroup.style("padding", "5px");
+    buttonGroup.style("display", "flex");
+
+    //Load map and play
+    let playButton = createButton("▶").parent(buttonGroup);
+    playButton.style("color", "white");
+    playButton.style("background", "#004f1e");
+    playButton.mousePressed(() => {
+      loadUserStage(stage, "playing");
+    })
+
+    //Delete and save data
+    let deleteButton = createButton("✘").parent(buttonGroup);
+    deleteButton.style("color", "white");
+    deleteButton.style("background", "#004f1e");
+    deleteButton.mousePressed(() => {
+      if (confirm(`Delete stage "${stage}"?`)){
+        delete userStages[stage];
+        localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
+      }
+    })
+
+    //Load map and edit
+    let develop = createButton("✎").parent(buttonGroup);
+    develop.style("color", "white");
+    develop.style("background", "#004f1e");
+    develop.mousePressed(() => {
+      loadUserStage(stage, "editor");
+    })
+  }
+
+  //Bottom area(creat new stage)
+  createP("---").parent(parent);
+
+  let newArea = createDiv("").parent(parent);
+  newArea.style("display", "flex");
+  newArea.style("justify-content", "center");
+  newArea.style("gap", "10px");
+
+  //Label
+  createElement("span", "NEW").parent(newArea);
+
+  //When pressed make a new stage input and enter it into save history
+  let createBtn = createButton("CREATE").parent(newArea);
+  createBtn.mousePressed(() => {
+    let name = prompt("Enter stage name");
+    if (name && !userStages[name]) {
+      let emptyGrid = createGrid(totalRows, totalCols);
+      userStages[name] = emptyGrid
+
+      localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
+      loadUserStage(name, "editor"); 
+    }
+    else {
+      alert("Stage with that name already exists");
+    }
+  });
+
+  //Close button
+  let exitButton = createButton("X").parent(parent);
+  exitButton.style("margin-top", "10px");
+  exitButton.mousePressed(() => {
+    stageManager.hide();
+  });
+}
+
+function loadUserStage(stageName, mode){  
+  //If stage doesn't exist return
+  if (!userStages[stageName]){
+    return
+  };
+
+  currentEditingStage = (mode === "editor" ? stageName : null);
+  mainMenuContainer.hide();
+  stageManager.hide();
+  gameMode = mode
+
+  let deadStage = structuredClone(userStages[stageName])
+  
+  if (gameMode === "editor") {
+    mapGrid = loadStage(deadStage)
+    dev()
+  }
+
+  else {
+    mapGrid = loadStage(deadStage)
+  }
+
 }
