@@ -3,7 +3,7 @@
 // 3/2/2026
 //
 // Extra for Experts:
-// - My project includes the use of spritesheets, to make animations, classes, and I made the camera follow the player
+// - (Changed for grid assignment) For the grid assignment I included saving stages on the users local history
   
 //Controls: WASD To move, Shift to roll, hold shift to sprint, M1 to punch, space to jump
 
@@ -35,10 +35,10 @@ let screenShake = 0;
 let mapScale = 1.7;
 
 //For stages and stage creator
-let internalStages = {}
-let userStages = {}
-let gameMode = "menu"
-let currentEditingStage = null
+let internalStages = {};
+let userStages = {};
+let gameMode = "menu";
+let currentEditingStage = null;
 
 //UI Containers 
 //Main Menu
@@ -147,7 +147,7 @@ function preload() {
   mushroomRun = loadImage("Mushroom/Mushroom-Run.png");
   mushroomStun = loadImage("Mushroom/Mushroom-Stun.png");
   mushroomGotHit = loadImage("Mushroom/Mushroom-Hit.png");
-  mushroomButtonImg = loadImage("Mushroom/mushroomBtn.png")
+  mushroomButtonImg = loadImage("Mushroom/mushroomBtn.png");
 
   //Props and textures
   deadGrassTexture = loadImage("PropsTextures/deadGrass.png");
@@ -168,7 +168,7 @@ function preload() {
   stoneStageL = loadImage("PropsTextures/stoneStageLeft.png");
   stoneStageR = loadImage("PropsTextures/stoneStageRight.png");
   stoneStageM = loadImage("PropsTextures/stoneStageMiddle.png");
-  gateImg = loadImage("PropsTextures/portal.png")
+  gateImg = loadImage("PropsTextures/portal.png");
 
   //Breakable objects
   crate = loadImage("BreakableObjects/Crate.png");
@@ -203,16 +203,16 @@ let stoneStage;
 //These variables are for the stage creater(grid part of the project)
 
 //Block presets
-let eraser = "eraser"
+let eraser = "eraser";
 let deadGrassLeft;
 let deadGrassRight;
 let deadGrassMid;
 let deadGrassPLeft;
 let deadGrassPRight;
-let deadGrassPMid
-let stonePL
-let stonePR
-let stoneP
+let deadGrassPMid;
+let stonePL;
+let stonePR;
+let stoneP;
 let dirtLeft;
 let dirtRight;
 let dirtMid;
@@ -229,7 +229,7 @@ let cellSize = 24;
 let totalCols = 50;
 let totalRows = 50;
 let createdStages = [];
-let selected = "none"
+let selected = "none";
 let blocksPlaced = [];
 let blocksUndone = [];
 let lastUndo = 0;
@@ -238,7 +238,7 @@ let lastSizeChange = 0;
 let objectLibrary;
 let rows = 1;
 let cols = 1;
-let canPlace = true
+let canPlace = true;
 
 
 function setup() {
@@ -249,7 +249,7 @@ function setup() {
   noSmooth();
 
   groundLevel = height - floorHeight;
-  mapGrid = createGrid(totalCols, totalRows)
+  mapGrid = createGrid(totalCols, totalRows);
   sidebarX = width * 0.05;
   sidebarY = height * 0.25;
   sidebarH = height / 2;
@@ -257,17 +257,17 @@ function setup() {
   initializeTables();
 
   //Load stages the player has made
-  let savedData = localStorage.getItem("platformer_userStages")
+  let savedData = localStorage.getItem("platformer_userStages");
   if (savedData) {
-    userStages = JSON.parse(savedData)
+    userStages = JSON.parse(savedData);
   }
   else {
-    userStages = {}
-    localStorage.setItem("platformer_userStages", "{}")
+    userStages = {};
+    localStorage.setItem("platformer_userStages", "{}");
   }
 
-  player = new Player(width/2, height/2)
-  entities.push(player)
+  player = new Player(width/2, height/2);
+  entities.push(player);
 
   setUpGUI();
   createMenuUI();
@@ -314,18 +314,18 @@ function drawTexts(){
   let gridX = Math.floor(worldX/cellSize);
   let gridY = Math.floor(worldY/cellSize);
 
-    //In game position
-    let drawY = gridY * cellSize + cellSize/2;
-    let drawX = gridX * cellSize + cellSize/2;
+  //In game position
+  let drawY = gridY * cellSize + cellSize/2;
+  let drawX = gridX * cellSize + cellSize/2;
 
-    stroke(255, 255, 255)
-    textSize(22)
+  stroke(255, 255, 255);
+  textSize(22);
 
-    text(drawX, width * 0.03, height * 0.05)
-    text(drawX, width * 0.03, height * 0.1)
+  text("X" + drawX, width * 0.03, height * 0.05);
+  text("Y" + drawY, width * 0.03, height * 0.1);
   
-    //It seems like a magic number because I expect half way to be *0.5, but its not acting that way? (0.25)
-    text((currentEditingStage), width * 0.25, height * 0.05)
+  //It seems like a magic number because I expect half way to be *0.5, but its not acting that way? (0.25)
+  text(currentEditingStage, width * 0.25, height * 0.05);
 }
 
 //Inputs
@@ -333,7 +333,7 @@ function keyPressed() {
   
 
   if (key === "e") {
-    selected = eraser
+    selected = eraser;
   }
 
   if (gameMode === "editor") {
@@ -387,7 +387,7 @@ function mousePressed() {
 }
 
 function mouseReleased(){
-  canPlace = true
+  canPlace = true;
 }
 
 //Humanoid class which includes anything all player/playerlike entities
@@ -536,7 +536,7 @@ class Player extends Humanoid {
     this.hitItems = [];
     this.alrHit = [];
     this.pressedS = 0;
-    this.type = "player"
+    this.type = "player";
 
     //Animations
     this.frameWidth = 128;
@@ -1221,7 +1221,7 @@ class Mushroom extends Humanoid {
     this.attackCooldown = 1500;
     this.health = 5;
     this.directionFacing = direction || "right";
-    this.type = "mushroom"
+    this.type = "mushroom";
 
     //Variables specific to entity for enemy AI
     this.startPos = startPos;
@@ -1716,7 +1716,7 @@ class Platform {
     this.canClimb = canClimb;
     this.bottomBlock = bottomBlock;
     this.cantCollide = cantCollide;
-    this.type = "block"
+    this.type = "block";
   }
 
   //Display platform with texture or fallback as rectangle
@@ -1948,7 +1948,7 @@ class HurtBlock extends Platform{
   constructor(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY) {
     super(xPos, yPos, sizeX, sizeY, oneWay, theColor, theImage, tileX, tileY);
 
-    this.type = "hurtBlock"
+    this.type = "hurtBlock";
   }
 
   checkCollision(item) {
@@ -1979,7 +1979,7 @@ class BackgroundImage{
   }
 
   display() {
-    image(this.x, this.y, this.sizeX, this.sizeY,)
+    image(this.x, this.y, this.sizeX, this.sizeY,);
   }
 }
 
@@ -2035,7 +2035,7 @@ class Debris{
       this.yVel += GRAVITATIONALFORCE;
     }
     else {
-      this.rotationSpeed = 0
+      this.rotationSpeed = 0;
     }
 
     this.grounded = false;
@@ -2059,11 +2059,11 @@ class BreakableObject {
     this.y = y;
     this.sizeX = sizeX;
     this.sizeY = sizeY;
-    this.img = mainImg
+    this.img = mainImg;
     this.health = health;
     this.chunks = [];
     this.active = true;
-    this.type = "breakableObject"
+    this.type = "breakableObject";
 
     this.top = this.y - this.sizeY / 2;
     this.bottom = this.y + this.sizeY / 2;
@@ -2202,7 +2202,7 @@ class Gate {
     this.toY = toY;
     this.sizeX = sizeX;
     this.sizeY = sizeY;
-    this.type = "gate"
+    this.type = "gate";
 
     this.top = this.y - this.sizeY / 2;
     this.bottom = this.y + this.sizeY / 2;
@@ -2272,8 +2272,8 @@ class Gate {
         player.x = this.toX;
         player.y = this.toY;
 
-        let nextStage = createdStages[this.to] || userStages[this.to]
-        loadStage(nextStage)
+        let nextStage = createdStages[this.to] || userStages[this.to];
+        loadStage(nextStage);
       }, 
       500);
     }
@@ -2281,12 +2281,12 @@ class Gate {
 
   display(){
     if (gameMode !== "editor") {
-      return
+      return;
     }
 
-    fill(255)
-    rect(this.x, this.y, this.sizeX, this.sizeY)
-    text(this.to, this.x, this.y)
+    fill(255);
+    rect(this.x, this.y, this.sizeX, this.sizeY);
+    text(this.to, this.x, this.y);
   }
 }
 
@@ -2323,27 +2323,27 @@ function checkDevModePost() {
 
     //Grow rows by one at max of ten if ctrl + shift + period is pressed (like font shortcut in google docs)
     if (keyIsDown(17) && keyIsDown(16) && keyIsDown(190)) {
-      changeSize("rows", 1)
+      changeSize("rows", 1);
     }
 
     //Shrink if ctrl + shift + comma
     if (keyIsDown(17) && keyIsDown(16) && keyIsDown(188)) {
-      changeSize("rows", -1)
+      changeSize("rows", -1);
     }
 
     //Ctrl + alt + . to grow cols by 1
     if (keyIsDown(18) && keyIsDown(17) && keyIsDown(190)) {
-      changeSize("cols", 1)
+      changeSize("cols", 1);
     }
 
     //Ctrl + alt + , to short cols by 1
     if (keyIsDown(18) && keyIsDown(17) && keyIsDown(188)) {
-      changeSize("cols", -1)
+      changeSize("cols", -1);
     }
 
   }
 
-  drawGrid(totalRows, totalCols)
+  drawGrid(totalRows, totalCols);
 }
 
 function checkDevModePre() {
@@ -2386,16 +2386,16 @@ function checkDevModePre() {
 function updateAll() {
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
-      let item = mapGrid[x][y]
+      let item = mapGrid[x][y];
       if (entities.includes(mapGrid[x][y] && gameMode === "playing")){
-          item.update()
-          item.applyForces();
+        item.update();
+        item.applyForces();
 
-          if (item !== player){
-            item.applyHit();
-            item.runAI();
-          }
+        if (item !== player){
+          item.applyHit();
+          item.runAI();
         }
+      }
         
       if (item) {
         if (item instanceof Platform) {
@@ -2409,8 +2409,12 @@ function updateAll() {
           }
         }
 
-        else if (item instanceof Gate && !gameMode !== "editor") {
+        else if (item instanceof Gate && gameMode === "player") {
           item.isTouched();
+        }
+
+        else if (item instanceof Gate && gameMode === "editor") {
+          item.display();
         }
 
         if (typeof item !== "string" && typeof item !== "number" && item) {
@@ -2575,12 +2579,12 @@ function createGrid(cols, rows) {
 function drawGrid(cols, rows){
   push();
   noFill();
-  stroke(255, 255, 255, 15)
-  strokeWeight(2)
+  stroke(255, 255, 255, 15);
+  strokeWeight(2);
 
   for (let x = 0; x < rows; x++) {
     for (let y = 0; y < cols; y++){
-      rect(12 + x * cellSize, 12 + y* cellSize, cellSize, cellSize)
+      rect(12 + x * cellSize, 12 + y* cellSize, cellSize, cellSize);
     }
   }
 
@@ -2589,7 +2593,7 @@ function drawGrid(cols, rows){
 
 function dev() {
   //Clear everything
-  gameMode = "editor" 
+  gameMode = "editor"; 
 
   sideBar.show();
   sideBar.style("display", "grid");
@@ -2608,8 +2612,8 @@ function displayBlock(givenX, givenY) {
 
   for (let x = 0; x < rows; x++) {
     for(let y = 0; y < cols; y++) {
-      let gridX = baseGridX + x
-      let gridY = baseGridY + y
+      let gridX = baseGridX + x;
+      let gridY = baseGridY + y;
 
       if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
         continue;
@@ -2644,8 +2648,8 @@ function displayGate(){
     for(let y = 0; y < cols; y++) {
       tint(255, 127);
 
-      let gridX = baseGridX + x
-      let gridY = baseGridY + y
+      let gridX = baseGridX + x;
+      let gridY = baseGridY + y;
 
       if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
         continue;
@@ -2661,7 +2665,7 @@ function displayGate(){
         drawY = gridY * cellSize + cellSize/2;
       }
 
-      rect(drawX, drawY, 24, 24)
+      rect(drawX, drawY, 24, 24);
       noTint();
     }
   }
@@ -2709,9 +2713,11 @@ function displayMushroom() {
 
   for (let x = 0; x < rows; x++) {
     for(let y = 0; y < cols; y++) {
-      if (y % 2 !== 0) continue;
-      let gridY = baseGridY + y
-      let gridX = baseGridX + x
+      if (y % 2 !== 0) {
+        continue;
+      }
+      let gridY = baseGridY + y;
+      let gridX = baseGridX + x;
 
       if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
         continue;
@@ -2738,15 +2744,15 @@ function displayMushroom() {
 }
 
 function handleDeletes(gridX, gridY){
-  console.log(mapGrid[gridX][gridY])
+  //Store the last img so we can compare to placed block in functions
   if (mapGrid[gridX][gridY]  === player) {
     deleteArea(gridX, gridY - 1, 1, 3);
   }
   else if (mapGrid[gridX][gridY]  === "player1") {
-    deleteArea(gridX, gridY, 1, 3)
+    deleteArea(gridX, gridY, 1, 3);
   }
   else if (mapGrid[gridX][gridY]  === "player2") {
-    deleteArea(gridX, gridY - 2, 1, 3)
+    deleteArea(gridX, gridY - 2, 1, 3);
   }
   else if (mapGrid[gridX][gridY] instanceof Mushroom) {
     deleteArea(gridX, gridY, 1, 2);
@@ -2755,8 +2761,9 @@ function handleDeletes(gridX, gridY){
     deleteArea(gridX, gridY - 1, 1, 2);
   }
   else {
-    mapGrid[gridX][gridY] = NOBLOCK
+    mapGrid[gridX][gridY] = NOBLOCK;
   }
+
 }
 
 function placeBlock (givenX, givenY, givenSelected) {
@@ -2764,7 +2771,7 @@ function placeBlock (givenX, givenY, givenSelected) {
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
 
-  let usedSelected = givenSelected || selected
+  let usedSelected = givenSelected || selected;
 
   //Position on grid
   let gridX = givenX || Math.floor(worldX/cellSize);
@@ -2775,10 +2782,11 @@ function placeBlock (givenX, givenY, givenSelected) {
     return;
   }
 
-  handleDeletes(gridX, gridY)
+  handleDeletes(gridX, gridY);
 
   let drawY;
   let drawX = gridX * cellSize + cellSize/2;
+  
   if (usedSelected[usedSelected.length - 1] === "platform") {
     drawY = gridY * cellSize;
   }
@@ -2786,6 +2794,7 @@ function placeBlock (givenX, givenY, givenSelected) {
     drawY = gridY * cellSize + cellSize/2;
   }
   
+
 
   //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
   //The mapgrid array is using the new system 
@@ -2795,12 +2804,15 @@ function placeBlock (givenX, givenY, givenSelected) {
   }
 
   else if (usedSelected[usedSelected.length - 1] === "breakableObject"){
-    platform = new BreakableObject(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[4], usedSelected[9])
+    platform = new BreakableObject(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[4], usedSelected[9]);
   }
 
+  let listOfThings = [gridX, gridY, usedSelected]
+
   //Push platform to list of blocks placed if it isn"t literally the same block already there
-  if (platform && platform.img !== mapGrid[gridX][gridY].img) {
-    blocksPlaced.push([gridX, gridY, usedSelected]);
+  if (platform && listOfThings !== blocksPlaced[blocksPlaced.length - 1]) {
+    
+    blocksPlaced.push(listOfThings);
     mapGrid[gridX][gridY] = platform;
   }
 }
@@ -2821,8 +2833,8 @@ function displayEraser(){
   let drawY = gridY * cellSize + cellSize/2;
   let drawX = gridX * cellSize + cellSize/2;
 
-  fill(255, 0, 0, 30)
-  rect(drawX, drawY, 24, 24)
+  fill(255, 0, 0, 30);
+  rect(drawX, drawY, 24, 24);
   noFill();
 }
 
@@ -2839,12 +2851,11 @@ function deleteBlock(givenX, givenY){
     return;
   }
 
-  let item = mapGrid[gridX][gridY]
-  console.log(mapGrid[gridX][gridY])
-  blocksPlaced.push(["erase", item, gridX, gridY])
+  let item = mapGrid[gridX][gridY];
+  blocksPlaced.push(["erase", item, gridX, gridY]);
 
-  handleDeletes(gridX, gridY)
-  mapGrid[gridX][gridY] = NOBLOCK
+  handleDeletes(gridX, gridY);
+  mapGrid[gridX][gridY] = NOBLOCK;
 }
 
 function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
@@ -2861,35 +2872,36 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
     return;
   }
 
-  handleDeletes(gridX, gridY)
+  handleDeletes(gridX, gridY);
 
   let drawY = gridY * cellSize + cellSize/2;
   let drawX = gridX * cellSize + cellSize/2;
   
 
-  let destination
-  let toX
-  let toY
-  if (destination === null || destination === "") return;
+  let destination;
+  let toX;
+  let toY;
+  if (destination === null || destination === "") {
+    return;
+  }
 
   if (!givenDest){
     if (!canPlace) {
-      return
+      return;
     }
-    console.log("Hello")
-    destination = prompt("Where does your gate lead to (Enter a valid stage name you have created)")
-    toX = Number(prompt("When coming out the otherside where should your player end up X (should be a number)"))
-    toY = Number(prompt("When coming out the otherside where should you player up Y (should be a number)"))
+    destination = prompt("Where does your gate lead to (Enter a valid stage name you have created)");
+    toX = Number(prompt("When coming out the otherside where should your player end up X (should be a number)"));
+    toY = Number(prompt("When coming out the otherside where should you player up Y (should be a number)"));
     
   }
 
   else {
-    destination = givenDest
-    toX = givenToX
-    toY = givenToY
+    destination = givenDest;
+    toX = givenToX;
+    toY = givenToY;
   }
   
-  canPlace = false
+  canPlace = false;
 
   let gate = new Gate(drawX, drawY, currentEditingStage, destination, 24, 24, toX, toY);
 
@@ -2908,17 +2920,17 @@ function placeMultipleObjects(type){
     "block": placeBlock,
     "hurtBlock": placeHurtBlock,
     "mushroom": placeMushroom
-  }
+  };
 
-  let targetFunction = placementFunctions[type]
+  let targetFunction = placementFunctions[type];
 
   if (type === "mushroom" && targetFunction) {
     for (let x = 0; x < rows; x++) {
       for (let y = 0; y < cols; y++){
         if (y % 2 !== 0) {
-          continue
+          continue;
         }
-        targetFunction(baseGridX + x, baseGridY + y, )
+        targetFunction(baseGridX + x, baseGridY + y, );
       }
     }  
   }
@@ -2926,7 +2938,7 @@ function placeMultipleObjects(type){
   else if (targetFunction && type !== "mushroom"){
     for (let x = 0; x < rows; x++) {
       for (let y = 0; y < cols; y++){
-        targetFunction(baseGridX + x, baseGridY + y, )
+        targetFunction(baseGridX + x, baseGridY + y, );
       }
     }  
   }
@@ -2946,9 +2958,9 @@ function placeHurtBlock(givenX, givenY, givenSelected) {
     return;
   }
 
-  let usedSelected = givenSelected || selected
+  let usedSelected = givenSelected || selected;
 
-  handleDeletes(gridX, gridY)
+  handleDeletes(gridX, gridY);
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
@@ -2987,8 +2999,8 @@ function placePlayer(givenX, givenY){
   }
 
   //Set block above and below as identifiers of player 
-  mapGrid[gridX][gridY - 1] = "player1"
-  mapGrid[gridX][gridY + 1] = "player2"
+  mapGrid[gridX][gridY - 1] = "player1";
+  mapGrid[gridX][gridY + 1] = "player2";
   
   //Set center block to player object so we can loop through it
   mapGrid[gridX][gridY] = player;
@@ -2996,16 +3008,16 @@ function placePlayer(givenX, givenY){
   //Get rid of the player from blockspalced table if there is one
   for (let i = blocksPlaced.length - 1; i >= 0; i--) {
     if (!blocksPlaced[i]) {
-      return
+      return;
     }
-    let type = blocksPlaced[i][2]
+    let type = blocksPlaced[i][2];
     //The last item in the type array is the actual type of object it is
     if (type[type.length - 1] === "player") {
-      blocksPlaced.splice(i, 1)
+      blocksPlaced.splice(i, 1);
     } 
   }
 
-  blocksPlaced.push([gridX, gridY, playerObject])
+  blocksPlaced.push([gridX, gridY, playerObject]);
   player.x = drawX;
   player.y = drawY;
 }
@@ -3026,8 +3038,8 @@ function placeMushroom(givenX, givenY){
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
 
-  let currentCell = mapGrid[gridX][gridY]
-  let aboveCell = mapGrid[gridX][gridY - 1]
+  let currentCell = mapGrid[gridX][gridY];
+  let aboveCell = mapGrid[gridX][gridY - 1];
 
   let mushroom = new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0);
   
@@ -3043,12 +3055,12 @@ function placeObject() {
   if (gameMode === "editor") {
 
     if (
-    mouseX >= sidebarX &&
+      mouseX >= sidebarX &&
     mouseX <= sidebarX + sidebarW &&
     mouseY >= sidebarY &&
     mouseY <= sidebarY + sidebarH + 100) {
-    return
-  }
+      return;
+    }
 
     //Check what type of object this is
     if (selected[selected.length - 1] === "block" || selected[selected.length - 1] === "platform" || selected[selected.length - 1] === "breakableObject") {
@@ -3060,19 +3072,19 @@ function placeObject() {
     }
 
     else if (selected[selected.length - 1] === "hurtBlock") {
-      placeMultipleObjects("hurtBlock")
+      placeMultipleObjects("hurtBlock");
     }
 
     else if (selected[selected.length - 1] === "mushroom") {
-      placeMultipleObjects("mushroom")
+      placeMultipleObjects("mushroom");
     }
 
     else if (selected[selected.length - 1] === "gate") {
-      placeGate()
+      placeGate();
     }
 
     else if (selected === "eraser") {
-      deleteBlock()
+      deleteBlock();
     }
   }
 }
@@ -3094,7 +3106,7 @@ function moveCamera() {
 
 //Utility functions for stage building (undo, copy and paste ect)
 function undo(){
-  let lastBlock = blocksPlaced[blocksPlaced.length - 1]
+  let lastBlock = blocksPlaced[blocksPlaced.length - 1];
 
   //Return if blocksPlaced is empty
   if (!blocksPlaced[0] || millis() - lastUndo < 60) {
@@ -3103,51 +3115,50 @@ function undo(){
 
   //Different handling if this is for a delete
   if (lastBlock[0] === "erase") {
-    console.log(lastBlock)
-    let item = lastBlock[1]
-    let x = lastBlock[2]
-    let y = lastBlock[3]
+    let item = lastBlock[1];
+    let x = lastBlock[2];
+    let y = lastBlock[3];
     
     if (item === "player1") {
-      placePlayer(x, y + 1)
+      placePlayer(x, y + 1);
     }
 
     else if (item === "player2") {
-      placePlayer(x, y - 1)
+      placePlayer(x, y - 1);
     }
 
     else if (item instanceof Player){
-      placePlayer(x, y)
+      placePlayer(x, y);
     }
 
     else if (item === "mushroom") {
-      placeMushroom(x, y)
+      placeMushroom(x, y);
     }
 
     else if (item instanceof Mushroom) {
-      placeMushroom(x, y +1)
+      placeMushroom(x, y +1);
     }
 
     else {
       mapGrid[x][y] = item;
     }
     
-    blocksPlaced.pop()
-    blocksUndone.push(["erase", item, x, y])
-    lastUndo = millis()
-    return
+    blocksPlaced.pop();
+    blocksUndone.push(["erase", item, x, y]);
+    lastUndo = millis();
+    return;
   }
 
-  let x = lastBlock[0]
-  let y = lastBlock[1]
-  let type = lastBlock[2]
-  let items = ["block", "hurtBlock", "breakableObject", "gate", "platform"]
+  let x = lastBlock[0];
+  let y = lastBlock[1];
+  let type = lastBlock[2];
+  let items = ["block", "hurtBlock", "breakableObject", "gate", "platform"];
   if (type[type.length - 1] === "mushroom") {
     mapGrid[x][y] = NOBLOCK;
     mapGrid[x][y - 1] = NOBLOCK;
 
     lastUndo = millis();
-    blocksUndone.push(blocksPlaced.pop())
+    blocksUndone.push(blocksPlaced.pop());
   }
 
   else if (type[type.length - 1] === "player") {
@@ -3155,67 +3166,65 @@ function undo(){
     mapGrid[x][y] = NOBLOCK;
     mapGrid[x][y - 1] = NOBLOCK;
     mapGrid[x][y + 1] = NOBLOCK;
-    blocksUndone.push(blocksPlaced.pop())
+    blocksUndone.push(blocksPlaced.pop());
   }
 
   else if (items.includes(type[type.length - 1])) {
     lastUndo = millis();
     mapGrid[x][y] = NOBLOCK;
-    blocksUndone.push(blocksPlaced.pop())
+    blocksUndone.push(blocksPlaced.pop());
   }
 }
 
 function redo() {
-  let lastBlock = blocksUndone[blocksUndone.length - 1]
+  let lastBlock = blocksUndone[blocksUndone.length - 1];
 
   if (!blocksUndone[0] || millis() - lastRedo < 150) {
     return;
   }
 
   if (lastBlock && lastBlock[0] === "erase") {
-    console.log(lastBlock)
-    let item = lastBlock[1]
-    let x = lastBlock[2]
-    let y = lastBlock[3]
+    let item = lastBlock[1];
+    let x = lastBlock[2];
+    let y = lastBlock[3];
 
-    handleDeletes(x, y)
-    blocksPlaced.push(blocksUndone.pop())
-    lastRedo = millis()
-    return
+    handleDeletes(x, y);
+    blocksPlaced.push(blocksUndone.pop());
+    lastRedo = millis();
+    return;
   }
 
-  let x = lastBlock[0]
-  let y = lastBlock[1]
-  let type = lastBlock[2]
-  let destination = lastBlock[3]
-  let toX = lastBlock[4]
-  let toY = lastBlock[5]
+  let x = lastBlock[0];
+  let y = lastBlock[1];
+  let type = lastBlock[2];
+  let destination = lastBlock[3];
+  let toX = lastBlock[4];
+  let toY = lastBlock[5];
 
-  console.log(lastBlock)
 
   //Place block back accordingly
   if (type[type.length - 1] === "mushroom") {
-    placeMushroom(x, y)
+    placeMushroom(x, y);
   }
 
   else if (type[type.length - 1] === "block" || type[type.length - 1] === "platform" || type[type.length - 1] === "breakableObject") {
-    placeBlock(x, y, type)
+    placeBlock(x, y, type);
   }
 
   else if (type[type.length - 1] === "hurtBlock") {
-    placeHurtBlock(x, y, type)
+    placeHurtBlock(x, y, type);
   }
 
   else if (type[type.length - 1] === "player") {
-    placePlayer(x, y)
+    placePlayer(x, y);
   }
 
   else if (type[type.length - 1] === "gate"){
-    placeGate(x, y, destination, toX, toY)
+    placeGate(x, y, destination, toX, toY);
   }
 
   lastRedo = millis();
-  blocksUndone.pop()
+  blocksUndone.pop();
 }
 
 function changeSize(rowsOrCols, change){
@@ -3225,16 +3234,16 @@ function changeSize(rowsOrCols, change){
 
 
   if (rowsOrCols === "rows") {
-    rows += change 
-    rows = Math.min(Math.max(rows, 1), 10)
+    rows += change; 
+    rows = Math.min(Math.max(rows, 1), 10);
   }
 
   else if (rowsOrCols === "cols"){
-    cols += change
-   cols = Math.min(Math.max(cols, 1), 10)
+    cols += change;
+    cols = Math.min(Math.max(cols, 1), 10);
   }
   
-  lastSizeChange = millis()
+  lastSizeChange = millis();
 }
 
 function deleteArea(xStart, yStart, rows, cols) {
@@ -3295,14 +3304,14 @@ function initializeTables() {
   playerObject = [100, 100, null, null, "playerButtonSheet", null, null, null, null, null, "player"];
   spike = [24, 24, false, "grey", "spikeUp", 24, 24, true, false, false, "hurtBlock"];
   mushroomBtn = [100, 100, null, null, "mushroomButtonImg", null, null, null, null, null, "mushroom"];
-  deadGrassPLeft = [24, 9, true, "grey", "deadGrassPlatformL", 24, 9, true, false, false, "platform"]
-  deadGrassPRight = [24, 9, true, "grey", "deadGrassPlatformR", 24, 9, true, false, false, "platform"]
-  deadGrassPMid = [24, 9, true, "grey", "deadGrassPlatformM", 24, 9, true, false, false, "platform"]
-  stonePL = [24, 9, true, "grey", "stonePlatformL", 24, 9, true, false, false, "platform"]
-  stonePR = [24, 9, true, "grey", "stonePlatformR", 24, 9, true, false, false, "platform"]
-  stoneP = [24, 9, true, "grey", "stonePlatformM", 24, 9, true, false, false, "platform"]
-  crateBtn = [24, 24, false, "grey", "crate", 24, 24, true, false, 3, "breakableObject"]
-  gateBtn = [24, 24, false, "grey", "gateImg", 24, 24, true, false, false, "gate"]
+  deadGrassPLeft = [24, 9, true, "grey", "deadGrassPlatformL", 24, 9, true, false, false, "platform"];
+  deadGrassPRight = [24, 9, true, "grey", "deadGrassPlatformR", 24, 9, true, false, false, "platform"];
+  deadGrassPMid = [24, 9, true, "grey", "deadGrassPlatformM", 24, 9, true, false, false, "platform"];
+  stonePL = [24, 9, true, "grey", "stonePlatformL", 24, 9, true, false, false, "platform"];
+  stonePR = [24, 9, true, "grey", "stonePlatformR", 24, 9, true, false, false, "platform"];
+  stoneP = [24, 9, true, "grey", "stonePlatformM", 24, 9, true, false, false, "platform"];
+  crateBtn = [24, 24, false, "grey", "crate", 24, 24, true, false, 3, "breakableObject"];
+  gateBtn = [24, 24, false, "grey", "gateImg", 24, 24, true, false, false, "gate"];
 
   //Make table containing all object presets
   objectLibrary = [
@@ -3341,12 +3350,12 @@ function setUpGUI() {
   sideBar.style("border", "1px solid white");
   sideBar.hide();
 
-  saveButton = createButton("SAVE")
+  saveButton = createButton("SAVE");
   saveButton.style("font-family", "Courier New", "monospace"); //Switch to pixel art font once downloaded
   saveButton.style("font-weight", "bold");
-  saveButton.style('font-size', "25px")
-  saveButton.position(sidebarX, height * 0.8)
-  saveButton.size(sidebarW, 50)
+  saveButton.style('font-size', "25px");
+  saveButton.position(sidebarX, height * 0.8);
+  saveButton.size(sidebarW, 50);
   saveButton.style("background", "rgba(40, 0, 0, 0.95)");
   saveButton.style("color", "white");
   saveButton.style("border", "1px solid white");
@@ -3355,7 +3364,7 @@ function setUpGUI() {
   saveButton.mousePressed(() => {
     //Save a structured clone of whatever the current map is to user stages
     if (userStages[currentEditingStage] ){
-      userStages[currentEditingStage] = structuredClone(mapGrid)
+      userStages[currentEditingStage] = structuredClone(mapGrid);
       localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
     }
   });
@@ -3381,15 +3390,15 @@ function setUpGUI() {
   }
 }
 function loadStage(stage){
-  currentStage = stage
-  let newMap = createGrid(totalRows, totalCols)
+  currentStage = stage;
+  let newMap = createGrid(totalRows, totalCols);
 
   //Clear old stuff
-  entities = []
+  entities = [];
 
   for (let x = 0; x < totalRows; x++){
     for (let y = 0; y < totalCols; y++){
-      let item = stage[x][y]
+      let item = stage[x][y];
       if (item.type === "block" || item.type === "platform") {
         newMap[x][y] = new Platform(
           item.x, 
@@ -3413,11 +3422,11 @@ function loadStage(stage){
           item.x,
           item.y
         );
-        player = savedPlayer
-        newMap[x][y] = player
-        newMap[x][y - 1] = "player1"
-        newMap[x][y + 1] = "player2"
-        entities.push(savedPlayer)
+        player = savedPlayer;
+        newMap[x][y] = player;
+        newMap[x][y - 1] = "player1";
+        newMap[x][y + 1] = "player2";
+        entities.push(savedPlayer);
       }
 
       if (typeof item === "string") {
@@ -3425,27 +3434,25 @@ function loadStage(stage){
       }
 
       if (item.type === "breakableObject") {
-        newMap[x][y] = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health)
+        newMap[x][y] = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health);
       }
 
       if (item.type === "gate") {
-        newMap[x][y] = new Gate(item.x, item.y, item.from, item.to, item.sizeX, item.sizeY, item.toX, item.toY)
+        newMap[x][y] = new Gate(item.x, item.y, item.from, item.to, item.sizeX, item.sizeY, item.toX, item.toY);
       }
 
       if (item.type === "mushroom") {
-        let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing)
-        newMap[x][y] = shroom
+        let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing);
+        newMap[x][y] = shroom;
       }
     }
   }
-
-  console.log(newMap)
-  return newMap
+  return newMap;
 }
 
 function createMenuUI(){
   //Create main menu container
-  mainMenuContainer = (createDiv("").id("menu"))
+  mainMenuContainer = createDiv("").id("menu");
 
   //Position on bottom left
   mainMenuContainer.style("position", "absolute");
@@ -3456,24 +3463,24 @@ function createMenuUI(){
   mainMenuContainer.style("gap", "50px");
 
   //Button to continue from wherever player last left off in campaign/main game
-  let continueBtn = createButton("CONTINUE")
-  continueBtn.parent(mainMenuContainer)
-  styleMenuButton(continueBtn)
+  let continueBtn = createButton("CONTINUE");
+  continueBtn.parent(mainMenuContainer);
+  styleMenuButton(continueBtn);
   
   //Continue player from wherever their last stage was when pressed (or from save point in the future)
   continueBtn.mousePressed(() => {
     loadCampaign();
-  })
+  });
 
   //Dev button or to make a stage
-  let devButton = createButton("DEVELOP")
-  devButton.parent(mainMenuContainer)
-  styleMenuButton(devButton)
+  let devButton = createButton("DEVELOP");
+  devButton.parent(mainMenuContainer);
+  styleMenuButton(devButton);
 
   //Open stage manager when pressed
   devButton.mousePressed(() => {
     stageManager.show();
-  })
+  });
 }
 
 //Function to give main menu buttons consistent look
@@ -3494,19 +3501,19 @@ function styleMenuButton(btn) {
 
   //Make hover anims
   btn.mouseOver(() => {
-    btn.style("color", "#273C75")
-    btn.style("transform", "scale(1.2)")
-  })
+    btn.style("color", "#273C75");
+    btn.style("transform", "scale(1.2)");
+  });
 
   //Reset 
   btn.mouseOut(() => {
-    btn.style("color", "#000000")
-    btn.style("transform", "scale(1)")
-  })
+    btn.style("color", "#000000");
+    btn.style("transform", "scale(1)");
+  });
 }
 
 function stageManagerUI(){
-  stageManager = createDiv("").id("stageManager")
+  stageManager = createDiv("").id("stageManager");
   stageManager.style("position", "absolute");
   stageManager.style("top", "50%");
   stageManager.style("left", "50%");
@@ -3515,30 +3522,30 @@ function stageManagerUI(){
   stageManager.style("transform", "translate(-50%, -50%)");
 
   //Customizations
-  stageManager.style("background", "#290e4e61")
-  stageManager.style("border", "5px solid black")
-  stageManager.style("border-color", "#000000")
-  stageManager.style("padding", "20px")
-  stageManager.style("text-align", "center")
+  stageManager.style("background", "#290e4e61");
+  stageManager.style("border", "5px solid black");
+  stageManager.style("border-color", "#000000");
+  stageManager.style("padding", "20px");
+  stageManager.style("text-align", "center");
   stageManager.style("font-family", "Courier New", "monospace");
-  stageManager.style("font-size", "50px")
+  stageManager.style("font-size", "50px");
 
   //Hide until dev button pressed
-  stageManager.hide()
-  buildStageItem(stageManager)
+  stageManager.hide();
+  buildStageItem(stageManager);
 }
 
 //Goal is to make a list of stages with various buttons to interact with stages
 function buildStageItem(parent){
-  parent.html('') //Crucial to clear old list
+  parent.html(''); //Crucial to clear old list
 
   //Title
   createElement("h3", "STAGES").parent(parent);
 
   //Creat scrollable box to contain our stagest
 
-  let scrollBox = createDiv("").parent(parent)
-  scrollBox.style("max-height", "300px")
+  let scrollBox = createDiv("").parent(parent);
+  scrollBox.style("max-height", "300px");
   scrollBox.style("overflow-y", "auto");
   scrollBox.style("padding-right", "10px");
   scrollBox.style("padding-bottom", "15px");
@@ -3547,16 +3554,16 @@ function buildStageItem(parent){
   for (let stage in userStages) {
     let entry = createDiv("").parent(scrollBox);
     entry.style("display", "flex");
-    entry.style("justify-content","space-between")
+    entry.style("justify-content","space-between");
     entry.style("align-items", "center");
-    entry.style("border", "5px solid black")
+    entry.style("border", "5px solid black");
     entry.style("padding", "5px");
     
     //label
     createElement("span", stage).parent(entry);
 
     //Where are buttons are held
-    let buttonGroup = createDiv("").parent(entry)
+    let buttonGroup = createDiv("").parent(entry);
     buttonGroup.style("padding", "5px");
     buttonGroup.style("display", "flex");
 
@@ -3566,7 +3573,7 @@ function buildStageItem(parent){
     playButton.style("background", "#004f1e");
     playButton.mousePressed(() => {
       loadUserStage(stage, "playing");
-    })
+    });
 
     //Delete and save data
     let deleteButton = createButton("✘").parent(buttonGroup);
@@ -3577,7 +3584,7 @@ function buildStageItem(parent){
         delete userStages[stage];
         localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
       }
-    })
+    });
 
     //Load map and edit
     let develop = createButton("✎").parent(buttonGroup);
@@ -3585,7 +3592,7 @@ function buildStageItem(parent){
     develop.style("background", "#004f1e");
     develop.mousePressed(() => {
       loadUserStage(stage, "editor");
-    })
+    });
   }
 
   //Bottom area(creat new stage)
@@ -3605,7 +3612,7 @@ function buildStageItem(parent){
     let name = prompt("Enter stage name");
     if (name && !userStages[name]) {
       let emptyGrid = createGrid(totalRows, totalCols);
-      userStages[name] = emptyGrid
+      userStages[name] = emptyGrid;
 
       localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
       loadUserStage(name, "editor"); 
@@ -3626,23 +3633,23 @@ function buildStageItem(parent){
 function loadUserStage(stageName, mode){  
   //If stage doesn't exist return
   if (!userStages[stageName]){
-    return
+    return;
   };
 
-  currentEditingStage = (mode === "editor" ? stageName : null);
+  currentEditingStage = mode === "editor" ? stageName : null;
   mainMenuContainer.hide();
   stageManager.hide();
-  gameMode = mode
+  gameMode = mode;
 
-  let deadStage = structuredClone(userStages[stageName])
+  let deadStage = structuredClone(userStages[stageName]);
   
   if (gameMode === "editor") {
-    mapGrid = loadStage(deadStage)
-    dev()
+    mapGrid = loadStage(deadStage);
+    dev();
   }
 
   else {
-    mapGrid = loadStage(deadStage)
+    mapGrid = loadStage(deadStage);
   }
 
 }

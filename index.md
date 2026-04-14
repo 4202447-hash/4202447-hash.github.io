@@ -10,6 +10,7 @@
 - [2D grid](07-grid)
 - [Game of Life](08-life)
 - [Character in Grid](09-character)
+- [Walker Oop Demo](10-walker)
 
 ## Assignments
 - [Interactive Scene](interactive-scene)
