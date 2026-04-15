@@ -4,9 +4,8 @@
 //
 // Extra for Experts:
 // - describe what you did to take this project "above and beyond"
-
-let walker;
-let runner; 
+// let walker;
+// let runner; 
 
 class Walker{
   constructor(x, y, color, speed, size){
@@ -46,17 +45,37 @@ class Walker{
   }
 }
 
-function setup() {
-  createCanvas(windowWidth, windowHeight);
+//Version 1
+// function setup() {
+//   createCanvas(windowWidth, windowHeight);
 
-  walker = new Walker(width/2, height/2, color(255, 0, 0), 50, 5);
-  runner = new Walker(width/2, height/2, color(0, 255, 0), 100, 5);
+//   walker = new Walker(width * 0.75, height/2, color(255, 0, 0), 50, 5);
+//   runner = new Walker(width  *0.25, height/2, color(0, 255, 0), 100, 5);
+// }
+
+// function draw() {
+//   walker.move();
+//   walker.display();
+
+//   runner.move();
+//   runner.display();
+// }
+
+//Version 2
+let theWalkers = [];
+
+function setup(){
+  createCanvas(windowWidth, windowHeight);
 }
 
-function draw() {
-  walker.move();
-  walker.display();
+function draw(){
+  for (let walker of theWalkers){
+    walker.move();
+    walker.display();
+  }
+}
 
-  runner.move();
-  runner.display();
+function mousePressed(){
+  let walker = new Walker(random(width * 0.25, width), random(height * 0.25, height), color(random(255), random(255), random(255)), random(50, 100), random(5, 20));
+  theWalkers.push(walker);
 }

@@ -295,7 +295,7 @@ function draw() {
     if (screenShake > 0.1){
       screenShakeX = Math.random(screenShake/2, screenShake);
       screenShakeY = Math.random(screenShake/2, screenShake);
-      screenShake -= 0.1
+      screenShake -= 0.1;
     }
 
     translate(cameraX + screenShakeX, cameraY + screenShakeY);
@@ -917,8 +917,8 @@ class Player extends Humanoid {
     
     //reset roll state after lengthOfroll amount of time
     if (
-      (this.actionState === "rolling" &&
-      (millis() - this.lastroll > this.lengthOfroll || Math.sign(this.xVel) !== facing) )
+      this.actionState === "rolling" &&
+      (millis() - this.lastroll > this.lengthOfroll || Math.sign(this.xVel) !== facing) 
     ) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
@@ -937,7 +937,7 @@ class Player extends Humanoid {
       }
 
       else {
-        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this)
+        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this);
       }
     }
 
@@ -1635,7 +1635,7 @@ class Mushroom extends Humanoid {
   applyHit() {
     //Player dodges it if mushroom is currently attacking and player is rolling
     if (!this.active || player.actionState === "rolling" && this.actionState === "attack") {
-      console.log("returned")
+      console.log("returned");
       return;
     }
 
@@ -2099,14 +2099,14 @@ class BreakableObject {
     if (this.health <= 0) {
 
       for (let i = 0; i < 25; i++) {
-        debrisCount++
+        debrisCount++;
         this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, true));
       }
     }
 
     else {
       for (let i = 0; i < 5; i++) {
-        debrisCount++
+        debrisCount++;
         this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, false));
       }
     }
@@ -2285,7 +2285,7 @@ class Gate {
   //What happens when the gate is touched
   isTouched() {
     if (this.touched()) {
-      console.log("entering gate")
+      console.log("entering gate");
       fade = "out";
       setTimeout(() => {
         let nextStage = this.to;
@@ -2342,7 +2342,7 @@ function checkDevModePost() {
     }
 
     //Grow rows by one at max of ten if ctrl + shift + period is pressed (like font shortcut in google docs)
-    if (keyIsDown(17) && keyIsDown(16) && keyIsDown(190)) {
+    if (keyIsDown(17) && keyIsDown(16) && (keyIsDown(190) || keyIsDown(222))) {
       changeSize("rows", 1);
     }
 
@@ -2420,9 +2420,9 @@ function updateAll() {
           for (let object of brObjects) {
             for (let chunk of object.chunks) {
               if (debrisCount > maxDebris){
-                object.chunks.shift()
-                debrisCount--
-                continue
+                object.chunks.shift();
+                debrisCount--;
+                continue;
               }
               item.checkCollision(chunk);
             }
@@ -2504,7 +2504,7 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
 
   for (let x = 0; x < totalRows; x++){
     for (let y = 0; y < totalCols; y++){
-      let object = mapGrid[x][y]
+      let object = mapGrid[x][y];
       if (entities.includes(object) || object instanceof BreakableObject){
         let top = object.y - object.sizeY / 2;
         let bottom = object.y + object.sizeY / 2;
@@ -2528,7 +2528,7 @@ function checkIfPath(x, y) {
   for (let i = 0; i < totalRows; i++){
     for (let j = 0; j < totalCols; j++){
       if (mapGrid[i][j] instanceof Platform || mapGrid[i][j] instanceof BreakableObject){
-        let plat = mapGrid[i][j]
+        let plat = mapGrid[i][j];
         if (
           x >= plat.left && 
           x <= plat.right && 
@@ -2611,7 +2611,7 @@ function dev() {
   saveButton.show();
 
   exitButton.show();
-  exitButton.style("display", "flex")
+  exitButton.style("display", "flex");
 }
 
 function displayBlock(givenX, givenY) {
@@ -2657,31 +2657,21 @@ function displayGate(){
   let baseGridX = Math.floor(worldX/cellSize);
   let baseGridY = Math.floor(worldY/cellSize);
 
-  for (let x = 0; x < rows; x++) {
-    for(let y = 0; y < cols; y++) {
-      tint(255, 127);
+  let gridX = baseGridX;
+  let gridY = baseGridY;
 
-      let gridX = baseGridX + x;
-      let gridY = baseGridY + y;
+  let drawX = gridX * cellSize + cellSize/2;
+  let drawY;
 
-      if (mapGrid[gridX] === undefined || mapGrid[gridX][gridY] === undefined) {
-        continue;
-      }
-
-      let drawX = gridX * cellSize + cellSize/2;
-      let drawY;
-
-      if (selected[selected.length - 1] === "platform") {
-        drawY = gridY * cellSize;
-      }
-      else {
-        drawY = gridY * cellSize + cellSize/2;
-      }
-
-      rect(drawX, drawY, 24, 24);
-      noTint();
-    }
+  if (selected[selected.length - 1] === "platform") {
+    drawY = gridY * cellSize;
   }
+  else {
+    drawY = gridY * cellSize + cellSize/2;
+  }
+
+  rect(drawX, drawY, 24, 24);
+  noTint();
 }
 
 function displayPlayer() {
@@ -2780,7 +2770,7 @@ function handleDeletes(gridX, gridY){
 }
 
 function checkDuplicate(gridX, gridY, usedSelected){
-  let lastPlaced = blocksPlaced[blocksPlaced.length - 1]
+  let lastPlaced = blocksPlaced[blocksPlaced.length - 1];
   return lastPlaced && lastPlaced[0] === gridX && lastPlaced[1] === gridY && lastPlaced[2] === usedSelected;
 }
 
@@ -2802,7 +2792,7 @@ function placeBlock (givenX, givenY, givenSelected) {
 
   
   if (checkDuplicate(gridX, gridY, usedSelected)){
-    return
+    return;
   }
 
   handleDeletes(gridX, gridY);
@@ -2832,6 +2822,7 @@ function placeBlock (givenX, givenY, givenSelected) {
   if (platform) {
     blocksPlaced.push([gridX, gridY, usedSelected]);
     mapGrid[gridX][gridY] = platform;
+    console.log("Pushed");
   }
 }
 
@@ -2891,7 +2882,7 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
   }
 
   if (checkDuplicate(gridX, gridY, selected)){
-    return
+    return;
   }
 
   handleDeletes(gridX, gridY);
@@ -2983,7 +2974,7 @@ function placeHurtBlock(givenX, givenY, givenSelected) {
   let usedSelected = givenSelected || selected;
 
   if (checkDuplicate(gridX, gridY, selected)){
-    return
+    return;
   }
 
   handleDeletes(gridX, gridY);
@@ -3112,7 +3103,7 @@ function placeObject() {
   }
 
   //Reset blocks undone
-  blocksUndone = []
+  blocksUndone = [];
 }
 
 function moveCamera() {
@@ -3127,6 +3118,17 @@ function moveCamera() {
   }
   if (keyIsDown(83)) {
     cameraY -= CAMERAMOVEAMOUNT;
+  }
+}
+
+function deleteDupes(xPos, yPos) {
+  // Loop backwards so splicing doesn't skip elements
+  for (let i = blocksPlaced.length - 1; i >= 0; i--) {
+    let block = blocksPlaced[i];
+    // Check if the coordinates match the one we just undid
+    if (block[0] === xPos && block[1] === yPos) {
+      blocksPlaced.splice(i, 1);
+    }
   }
 }
 
@@ -3169,7 +3171,6 @@ function undo(){
       mapGrid[x][y] = item;
     }
     
-    blocksPlaced.pop();
     blocksUndone.push(["erase", item, x, y]);
     lastUndo = millis();
     return;
@@ -3185,6 +3186,8 @@ function undo(){
 
     lastUndo = millis();
     blocksUndone.push(blocksPlaced.pop());
+    blocksPlaced = blocksPlaced.filter(block => block !== lastBlock);
+    deleteDupes(x, y);
   }
 
   else if (type[type.length - 1] === "player") {
@@ -3193,12 +3196,14 @@ function undo(){
     mapGrid[x][y - 1] = NOBLOCK;
     mapGrid[x][y + 1] = NOBLOCK;
     blocksUndone.push(blocksPlaced.pop());
+    deleteDupes(x, y);
   }
 
   else if (items.includes(type[type.length - 1])) {
     lastUndo = millis();
     mapGrid[x][y] = NOBLOCK;
     blocksUndone.push(blocksPlaced.pop());
+    deleteDupes(x, y);
   }
 }
 
@@ -3404,13 +3409,13 @@ function setUpGUI() {
     }
   });
 
-  exitButton = createButton("X")
-  exitButton.style("color", "white")
-  exitButton.size(75, 75)
+  exitButton = createButton("X");
+  exitButton.style("color", "white");
+  exitButton.size(75, 75);
   exitButton.position(width * 0.9, height * 0.1);
   exitButton.style("font-size", "50px");
-  exitButton.style("background-color", "rgba(83, 4, 4, 0.95)")
-  exitButton.style("border", "1px solid white")
+  exitButton.style("background-color", "rgba(83, 4, 4, 0.95)");
+  exitButton.style("border", "1px solid white");
   exitButton.style("text-align", "center");
   exitButton.style("align-items", "center");
   exitButton.style("justify-content", "center");
@@ -3427,14 +3432,14 @@ function setUpGUI() {
   });
 
   exitButton.mousePressed(() => {
-    gameMode = "menu"
+    gameMode = "menu";
     mainMenuContainer.show();
-    mainMenuContainer.style("display", "flex")
+    mainMenuContainer.style("display", "flex");
     sideBar.hide();
     saveButton.hide();
     exitButton.hide();
-    selected = "none"
-  })
+    selected = "none";
+  });
 
   for (let object of objectLibrary) {
     button = createButton("");
@@ -3502,8 +3507,8 @@ function loadStage(stage){
 
       if (item.type === "breakableObject") {
         let object = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health);
-        newMap[x][y] = object
-        brObjects.push(object)
+        newMap[x][y] = object;
+        brObjects.push(object);
       }
 
       if (item.type === "gate") {
@@ -3513,7 +3518,7 @@ function loadStage(stage){
       if (item.type === "mushroom") {
         let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing);
         newMap[x][y] = shroom;
-        entities.push(shroom)
+        entities.push(shroom);
       }
     }
   }
@@ -3653,7 +3658,7 @@ function buildStageItem(parent){
       if (confirm(`Delete stage "${stage}"?`)){
         delete userStages[stage];
         localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
-        buildStageItem(parent)
+        buildStageItem(parent);
       }
     });
 
@@ -3687,6 +3692,7 @@ function buildStageItem(parent){
 
       localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
       loadUserStage(name, "editor"); 
+      buildStageItem(parent);
     }
     else {
       alert("Stage with that name already exists");
