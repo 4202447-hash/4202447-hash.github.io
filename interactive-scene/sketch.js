@@ -29,6 +29,8 @@ let player;
 let platforms = [];
 let entities = [];
 let brObjects = [];
+let debrisCount = 0;
+let maxDebris = 100;
 let gates = [];
 let currentStage;
 let screenShake = 0;
@@ -52,6 +54,7 @@ let sidebarW = 150;
 let sidebarH;
 let sideBar;
 let saveButton;
+let exitButton;
 
 //General
 let returnToMainMenu;
@@ -289,6 +292,11 @@ function draw() {
     let screenShakeY = 0;
 
     //Shake screen if screenshake is above 0.1 (screenshake is the magnitude)
+    if (screenShake > 0.1){
+      screenShakeX = Math.random(screenShake/2, screenShake);
+      screenShakeY = Math.random(screenShake/2, screenShake);
+      screenShake -= 0.1
+    }
 
     translate(cameraX + screenShakeX, cameraY + screenShakeY);
 
@@ -444,8 +452,8 @@ class Humanoid {
 
     //Stats and equips
     this.currentWeapon = "punch";
-    this.rangeX = 30;
-    this.rangeY = 10;
+    this.rangeX = 40;
+    this.rangeY = 30;
 
     //Table of non conflict states
     this.states = [
@@ -905,10 +913,12 @@ class Player extends Humanoid {
       this.moveDir = 0;
     }
 
+    let facing = this.directionFacing === "left" ? -1 : 1;
+    
     //reset roll state after lengthOfroll amount of time
     if (
-      this.actionState === "rolling" &&
-      millis() - this.lastroll > this.lengthOfroll
+      (this.actionState === "rolling" &&
+      (millis() - this.lastroll > this.lengthOfroll || Math.sign(this.xVel) !== facing) )
     ) {
       this.lastActionState = this.actionState;
       this.actionState = "idle";
@@ -919,7 +929,7 @@ class Player extends Humanoid {
     this.handleState();
 
     //If attacking run hitbox chcks
-    let facing = this.directionFacing === "left" ? -1 : 1;
+    
 
     if (this.actionState.startsWith(this.currentWeapon)){
       if (this.actionState.includes("Up")) {
@@ -927,7 +937,7 @@ class Player extends Humanoid {
       }
 
       else {
-        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this);
+        this.hitItems = getItemsInArea(this.x + 36 * facing, this.y, this.rangeX, this.rangeY, this)
       }
     }
 
@@ -954,6 +964,7 @@ class Player extends Humanoid {
           if (this.actionState === "downSlam") {
             this.yVel = -8;
             this.actionState = "jumpLaunch";
+            item.onHit();
           }
         }
       }
@@ -1359,7 +1370,7 @@ class Mushroom extends Humanoid {
     //Movement
 
     //If there is nothing ahead of us turn around
-    let lookAhead = this.directionFacing === "right" ? -5 : 5;
+    let lookAhead = this.directionFacing === "right" ? -25 : 25;
     let floorCheckX = this.x + lookAhead;
     let floorCheckY = this.bottom + 10;
 
@@ -1541,6 +1552,10 @@ class Mushroom extends Humanoid {
   //Update mushroom
   update() {
     this.handleState();
+    if (this.checkCollision(player)){
+      this.applyHit();
+    };
+    this.runAI();
 
     //Reset animation frame
     if (this.actionState !== this.lastActionState) {
@@ -1620,6 +1635,7 @@ class Mushroom extends Humanoid {
   applyHit() {
     //Player dodges it if mushroom is currently attacking and player is rolling
     if (!this.active || player.actionState === "rolling" && this.actionState === "attack") {
+      console.log("returned")
       return;
     }
 
@@ -2083,12 +2099,14 @@ class BreakableObject {
     if (this.health <= 0) {
 
       for (let i = 0; i < 25; i++) {
+        debrisCount++
         this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, true));
       }
     }
 
     else {
       for (let i = 0; i < 5; i++) {
+        debrisCount++
         this.chunks.push(new Debris (this.x, this.y, imageTable[this.img], this.sizeX, this.sizeY, false));
       }
     }
@@ -2209,6 +2227,7 @@ class Gate {
     this.left = this.x - this.sizeX / 2;
     this.right = this.x + this.sizeX / 2;
   }
+  
 
   touched(){
     let item = player;
@@ -2266,14 +2285,15 @@ class Gate {
   //What happens when the gate is touched
   isTouched() {
     if (this.touched()) {
+      console.log("entering gate")
       fade = "out";
       setTimeout(() => {
+        let nextStage = this.to;
+        loadUserStage(nextStage, "playing");
+
         player.yVel = 0;
         player.x = this.toX;
         player.y = this.toY;
-
-        let nextStage = createdStages[this.to] || userStages[this.to];
-        loadStage(nextStage);
       }, 
       500);
     }
@@ -2341,9 +2361,9 @@ function checkDevModePost() {
       changeSize("cols", -1);
     }
 
+    drawGrid(totalRows, totalCols);
   }
 
-  drawGrid(totalRows, totalCols);
 }
 
 function checkDevModePre() {
@@ -2387,29 +2407,29 @@ function updateAll() {
   for (let x = 0; x < totalRows; x++) {
     for (let y = 0; y < totalCols; y++) {
       let item = mapGrid[x][y];
-      if (entities.includes(mapGrid[x][y] && gameMode === "playing")){
+      if (entities.includes(mapGrid[x][y]) && gameMode === "playing"){
         item.update();
         item.applyForces();
-
-        if (item !== player){
-          item.applyHit();
-          item.runAI();
-        }
       }
         
       if (item) {
-        if (item instanceof Platform) {
+        if (item instanceof Platform || item instanceof BreakableObject || item instanceof HurtBlock) {
           for (let entity of entities) {
             item.checkCollision(entity);
           }
           for (let object of brObjects) {
             for (let chunk of object.chunks) {
+              if (debrisCount > maxDebris){
+                object.chunks.shift()
+                debrisCount--
+                continue
+              }
               item.checkCollision(chunk);
             }
           }
         }
 
-        else if (item instanceof Gate && gameMode === "player") {
+        else if (item instanceof Gate && gameMode === "playing") {
           item.isTouched();
         }
 
@@ -2482,36 +2502,21 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
   let squareTop = y - sizeY/2;
   let squareBottom = y + sizeY/2;
 
-  //Loop through breakable objects and entities and return what has been hit
-
-  for (let entity of entities) {
-    if (entity === self) {
-      continue;
-    }
-
-    let top = entity.y - entity.sizeY / 2;
-    let bottom = entity.y + entity.sizeY / 2;
-    let left = entity.x - entity.sizeX / 2;
-    let right = entity.x + entity.sizeX / 2;
+  for (let x = 0; x < totalRows; x++){
+    for (let y = 0; y < totalCols; y++){
+      let object = mapGrid[x][y]
+      if (entities.includes(object) || object instanceof BreakableObject){
+        let top = object.y - object.sizeY / 2;
+        let bottom = object.y + object.sizeY / 2;
+        let left = object.x - object.sizeX / 2;
+        let right = object.x + object.sizeX / 2;
     
-    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop; 
+        let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop; 
 
-    if (!isOutside) {
-      items.push(entity);
-    }
-
-  }
-
-  for (let object of brObjects) {
-    let top = object.y - object.sizeY / 2;
-    let bottom = object.y + object.sizeY / 2;
-    let left = object.x - object.sizeX / 2;
-    let right = object.x + object.sizeX / 2;
-    
-    let isOutside = left > squareRight || right < squareLeft || top > squareBottom || bottom < squareTop; 
-
-    if (!isOutside) {
-      items.push(object);
+        if (!isOutside) {
+          items.push(object);
+        } 
+      }
     }
   }
 
@@ -2520,14 +2525,19 @@ function getItemsInArea(x, y, sizeX, sizeY, self) {
 
 //Checks if there is a platform in a given location
 function checkIfPath(x, y) {
-  for (let plat of platforms) {
-    if (
-      x >= plat.left && 
-      x <= plat.right && 
-      y >= plat.top && 
-      y <= plat.bottom
-    ) {
-      return true; // Point is inside a platform
+  for (let i = 0; i < totalRows; i++){
+    for (let j = 0; j < totalCols; j++){
+      if (mapGrid[i][j] instanceof Platform || mapGrid[i][j] instanceof BreakableObject){
+        let plat = mapGrid[i][j]
+        if (
+          x >= plat.left && 
+          x <= plat.right && 
+          y >= plat.top && 
+          y <= plat.bottom
+        ) {
+          return true; // Point is inside a platform
+        }
+      }
     }
   }
 
@@ -2599,6 +2609,9 @@ function dev() {
   sideBar.style("display", "grid");
 
   saveButton.show();
+
+  exitButton.show();
+  exitButton.style("display", "flex")
 }
 
 function displayBlock(givenX, givenY) {
@@ -2766,6 +2779,11 @@ function handleDeletes(gridX, gridY){
 
 }
 
+function checkDuplicate(gridX, gridY, usedSelected){
+  let lastPlaced = blocksPlaced[blocksPlaced.length - 1]
+  return lastPlaced && lastPlaced[0] === gridX && lastPlaced[1] === gridY && lastPlaced[2] === usedSelected;
+}
+
 function placeBlock (givenX, givenY, givenSelected) {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2782,6 +2800,11 @@ function placeBlock (givenX, givenY, givenSelected) {
     return;
   }
 
+  
+  if (checkDuplicate(gridX, gridY, usedSelected)){
+    return
+  }
+
   handleDeletes(gridX, gridY);
 
   let drawY;
@@ -2794,8 +2817,6 @@ function placeBlock (givenX, givenY, givenSelected) {
     drawY = gridY * cellSize + cellSize/2;
   }
   
-
-
   //We have to arrays containing two types of block data. the "platforms array" uses the old system which was made outside of the grid system
   //The mapgrid array is using the new system 
   let platform;
@@ -2807,12 +2828,9 @@ function placeBlock (givenX, givenY, givenSelected) {
     platform = new BreakableObject(drawX, drawY, usedSelected[0], usedSelected[1], usedSelected[4], usedSelected[9]);
   }
 
-  let listOfThings = [gridX, gridY, usedSelected]
-
   //Push platform to list of blocks placed if it isn"t literally the same block already there
-  if (platform && listOfThings !== blocksPlaced[blocksPlaced.length - 1]) {
-    
-    blocksPlaced.push(listOfThings);
+  if (platform) {
+    blocksPlaced.push([gridX, gridY, usedSelected]);
     mapGrid[gridX][gridY] = platform;
   }
 }
@@ -2870,6 +2888,10 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
   //Return early if no spot there
   if (!mapGrid[gridX] || mapGrid[gridX][gridY] === undefined) {
     return;
+  }
+
+  if (checkDuplicate(gridX, gridY, selected)){
+    return
   }
 
   handleDeletes(gridX, gridY);
@@ -2960,6 +2982,10 @@ function placeHurtBlock(givenX, givenY, givenSelected) {
 
   let usedSelected = givenSelected || selected;
 
+  if (checkDuplicate(gridX, gridY, selected)){
+    return
+  }
+
   handleDeletes(gridX, gridY);
 
   let drawX = gridX * cellSize + cellSize/2;
@@ -3031,15 +3057,12 @@ function placeMushroom(givenX, givenY){
   let gridY = givenY || Math.floor(worldY/cellSize);
 
   //if no position on grid return
-  if (!mapGrid[gridX]) {
+  if (!mapGrid[gridX] || checkDuplicate(gridX, gridY, selected)) {
     return;
   }
 
   let drawX = gridX * cellSize + cellSize/2;
   let drawY = gridY * cellSize + cellSize/2;
-
-  let currentCell = mapGrid[gridX][gridY];
-  let aboveCell = mapGrid[gridX][gridY - 1];
 
   let mushroom = new Mushroom(drawX, drawY, drawX + 100, drawX - 100, 0);
   
@@ -3087,6 +3110,9 @@ function placeObject() {
       deleteBlock();
     }
   }
+
+  //Reset blocks undone
+  blocksUndone = []
 }
 
 function moveCamera() {
@@ -3356,11 +3382,20 @@ function setUpGUI() {
   saveButton.style('font-size', "25px");
   saveButton.position(sidebarX, height * 0.8);
   saveButton.size(sidebarW, 50);
-  saveButton.style("background", "rgba(40, 0, 0, 0.95)");
+  saveButton.style("background", "rgba(83, 4, 4, 0.95)");
   saveButton.style("color", "white");
   saveButton.style("border", "1px solid white");
   saveButton.hide();
+  saveButton.style("transition", "transform 0.2s ease-out");
 
+  saveButton.mouseOver(() =>{
+    saveButton.style("transform", "scale(1.2)");
+  });
+
+  saveButton.mouseOut(() =>{
+    saveButton.style("transform", "scale(1)");
+  });
+  
   saveButton.mousePressed(() => {
     //Save a structured clone of whatever the current map is to user stages
     if (userStages[currentEditingStage] ){
@@ -3368,6 +3403,38 @@ function setUpGUI() {
       localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
     }
   });
+
+  exitButton = createButton("X")
+  exitButton.style("color", "white")
+  exitButton.size(75, 75)
+  exitButton.position(width * 0.9, height * 0.1);
+  exitButton.style("font-size", "50px");
+  exitButton.style("background-color", "rgba(83, 4, 4, 0.95)")
+  exitButton.style("border", "1px solid white")
+  exitButton.style("text-align", "center");
+  exitButton.style("align-items", "center");
+  exitButton.style("justify-content", "center");
+  exitButton.style("display", "flex");
+  exitButton.style("transition", "transform 0.2s ease-out");
+  exitButton.hide();
+
+  exitButton.mouseOver(() =>{
+    exitButton.style("transform", "scale(1.2)");
+  });
+
+  exitButton.mouseOut(() =>{
+    exitButton.style("transform", "scale(1)");
+  });
+
+  exitButton.mousePressed(() => {
+    gameMode = "menu"
+    mainMenuContainer.show();
+    mainMenuContainer.style("display", "flex")
+    sideBar.hide();
+    saveButton.hide();
+    exitButton.hide();
+    selected = "none"
+  })
 
   for (let object of objectLibrary) {
     button = createButton("");
@@ -3434,7 +3501,9 @@ function loadStage(stage){
       }
 
       if (item.type === "breakableObject") {
-        newMap[x][y] = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health);
+        let object = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health);
+        newMap[x][y] = object
+        brObjects.push(object)
       }
 
       if (item.type === "gate") {
@@ -3444,6 +3513,7 @@ function loadStage(stage){
       if (item.type === "mushroom") {
         let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing);
         newMap[x][y] = shroom;
+        entities.push(shroom)
       }
     }
   }
@@ -3583,6 +3653,7 @@ function buildStageItem(parent){
       if (confirm(`Delete stage "${stage}"?`)){
         delete userStages[stage];
         localStorage.setItem("platformer_userStages", JSON.stringify(userStages));
+        buildStageItem(parent)
       }
     });
 
