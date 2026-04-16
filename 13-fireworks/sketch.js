@@ -3,11 +3,11 @@ let particles = []
 let PPC = 100;
 
 class Particle{
-  constructor(x, y, dx, dy, radius){
+  constructor(x, y, angle, dx, dy, radius,){
     this.x = x;
     this.y = y;
-    this.dx = dx || random(-25, 25);
-    this.dy = dy || random(-10, 10);
+    this.dx = dx || random(-20, 20);
+    this.dy = dy || random(-20, 20);
     this.radius = radius || 10;
     this.r = random(100, 255);
     this.g = random(50, 100);
@@ -34,7 +34,7 @@ class Particle{
     this.g += 1;
     this.b += random(-1, 1);
     this.transparency -= 3;
-    this.dy += 0.25
+    this.dy += 0.5
 
     if (this.transparency < 0) {
       particles = particles.filter(part => part !== this);
@@ -51,6 +51,8 @@ function draw() {
   for (let particle of particles){
     particle.update();
   }
+
+  mousePressed();
 }
 
 function mousePressed(){
