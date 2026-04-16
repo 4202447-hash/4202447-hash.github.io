@@ -2586,6 +2586,7 @@ function createGrid(cols, rows) {
   return grid;
 }
 
+//Function which draws the physical grid
 function drawGrid(cols, rows){
   push();
   noFill();
@@ -2601,6 +2602,7 @@ function drawGrid(cols, rows){
   pop();
 }
 
+//Function which enables dev mode
 function dev() {
   //Clear everything
   gameMode = "editor"; 
@@ -2614,6 +2616,7 @@ function dev() {
   exitButton.style("display", "flex");
 }
 
+//Function which displays selected block
 function displayBlock(givenX, givenY) {
   //The reason things like worldX is used is to make up for the difference between where the mouse is on the screen
   // and where the mouse is in the world relative to where the camera is looking
@@ -2650,6 +2653,7 @@ function displayBlock(givenX, givenY) {
   }
 }
 
+//Function which displays a blank square as a fill in for the gate
 function displayGate(){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2674,6 +2678,7 @@ function displayGate(){
   noTint();
 }
 
+//Function to display players silhouette
 function displayPlayer() {
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2706,6 +2711,7 @@ function displayPlayer() {
   noTint();
 }
 
+//Function which displays mushroom silhouette
 function displayMushroom() {
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2746,6 +2752,7 @@ function displayMushroom() {
   }
 }
 
+//Function which handles deletes for specific objects
 function handleDeletes(gridX, gridY){
   //Store the last img so we can compare to placed block in functions
   if (mapGrid[gridX][gridY]  === player) {
@@ -2769,11 +2776,13 @@ function handleDeletes(gridX, gridY){
 
 }
 
+//Function to check duplicates in spots
 function checkDuplicate(gridX, gridY, usedSelected){
   let lastPlaced = blocksPlaced[blocksPlaced.length - 1];
   return lastPlaced && lastPlaced[0] === gridX && lastPlaced[1] === gridY && lastPlaced[2] === usedSelected;
 }
 
+//Places block
 function placeBlock (givenX, givenY, givenSelected) {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2826,6 +2835,7 @@ function placeBlock (givenX, givenY, givenSelected) {
   }
 }
 
+//Function which displays a red rect for eraser mode
 function displayEraser(){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2847,6 +2857,7 @@ function displayEraser(){
   noFill();
 }
 
+//Function which erases a block with eraser selected
 function deleteBlock(givenX, givenY){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2867,6 +2878,7 @@ function deleteBlock(givenX, givenY){
   mapGrid[gridX][gridY] = NOBLOCK;
 }
 
+//Function which places a link between stages for dev mode
 function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2885,8 +2897,6 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
     return;
   }
 
-  handleDeletes(gridX, gridY);
-
   let drawY = gridY * cellSize + cellSize/2;
   let drawX = gridX * cellSize + cellSize/2;
   
@@ -2894,6 +2904,7 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
   let destination;
   let toX;
   let toY;
+
   if (destination === null || destination === "") {
     return;
   }
@@ -2913,6 +2924,12 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
     toX = givenToX;
     toY = givenToY;
   }
+
+  handleDeletes(gridX, gridY);
+
+  if (!destination || !toX || !toY){
+    return;
+  }
   
   canPlace = false;
 
@@ -2923,6 +2940,7 @@ function placeGate(givenX, givenY, givenDest, givenToX, givenToY){
   mapGrid[gridX][gridY] = gate;
 }
 
+//Function to place multiple blocks/objects in dev mode
 function placeMultipleObjects(type){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -2957,6 +2975,7 @@ function placeMultipleObjects(type){
   }
 }
 
+//Function to place hurt block in dev mode
 function placeHurtBlock(givenX, givenY, givenSelected) {
   //Get the position of the actual world relative to the camera
   let worldX = mouseX/mapScale - cameraX;
@@ -2990,6 +3009,7 @@ function placeHurtBlock(givenX, givenY, givenSelected) {
   }
 }
 
+//Places player on map for dev mode (keep in mind only one player at a time)
 function placePlayer(givenX, givenY){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -3039,6 +3059,7 @@ function placePlayer(givenX, givenY){
   player.y = drawY;
 }
 
+//Places mushroom onto map for dev mode
 function placeMushroom(givenX, givenY){
   let worldX = mouseX/mapScale - cameraX;
   let worldY = mouseY/mapScale - cameraY;
@@ -3065,6 +3086,7 @@ function placeMushroom(givenX, givenY){
   mapGrid[gridX][gridY] = "mushroom";
 }
 
+//Function to place object based on what the object type is
 function placeObject() {
   if (gameMode === "editor") {
 
@@ -3106,6 +3128,7 @@ function placeObject() {
   blocksUndone = [];
 }
 
+//Function to move camera for dev mode
 function moveCamera() {
   if (keyIsDown(65)) {
     cameraX += CAMERAMOVEAMOUNT;
@@ -3121,6 +3144,7 @@ function moveCamera() {
   }
 }
 
+//Utility function to delete duplicates used for the undo
 function deleteDupes(xPos, yPos) {
   // Loop backwards so splicing doesn't skip elements
   for (let i = blocksPlaced.length - 1; i >= 0; i--) {
@@ -3132,7 +3156,7 @@ function deleteDupes(xPos, yPos) {
   }
 }
 
-//Utility functions for stage building (undo, copy and paste ect)
+//Function to undo recent actions
 function undo(){
   let lastBlock = blocksPlaced[blocksPlaced.length - 1];
 
@@ -3207,6 +3231,7 @@ function undo(){
   }
 }
 
+//Function to redo after an undo
 function redo() {
   let lastBlock = blocksUndone[blocksUndone.length - 1];
 
@@ -3258,11 +3283,11 @@ function redo() {
   blocksUndone.pop();
 }
 
+//Function to change the amount of blocks being placed per click
 function changeSize(rowsOrCols, change){
   if (millis() - lastSizeChange < 150) {
     return;
   }
-
 
   if (rowsOrCols === "rows") {
     rows += change; 
@@ -3277,6 +3302,7 @@ function changeSize(rowsOrCols, change){
   lastSizeChange = millis();
 }
 
+//Function to delete an area given rows and columns
 function deleteArea(xStart, yStart, rows, cols) {
   for (let x = xStart; x < rows + xStart; x++ ) {
     for (let y = yStart; y < cols + yStart; y++) {
@@ -3381,6 +3407,7 @@ function setUpGUI() {
   sideBar.style("border", "1px solid white");
   sideBar.hide();
 
+  //Create button to save current grid
   saveButton = createButton("SAVE");
   saveButton.style("font-family", "Courier New", "monospace"); //Switch to pixel art font once downloaded
   saveButton.style("font-weight", "bold");
@@ -3393,6 +3420,7 @@ function setUpGUI() {
   saveButton.hide();
   saveButton.style("transition", "transform 0.2s ease-out");
 
+  //Hover effects
   saveButton.mouseOver(() =>{
     saveButton.style("transform", "scale(1.2)");
   });
@@ -3401,6 +3429,7 @@ function setUpGUI() {
     saveButton.style("transform", "scale(1)");
   });
   
+  //Once mouse is pressed update save history
   saveButton.mousePressed(() => {
     //Save a structured clone of whatever the current map is to user stages
     if (userStages[currentEditingStage] ){
@@ -3409,6 +3438,7 @@ function setUpGUI() {
     }
   });
 
+  //Exit button to leave development mode
   exitButton = createButton("X");
   exitButton.style("color", "white");
   exitButton.size(75, 75);
@@ -3423,6 +3453,7 @@ function setUpGUI() {
   exitButton.style("transition", "transform 0.2s ease-out");
   exitButton.hide();
 
+  //Transitions
   exitButton.mouseOver(() =>{
     exitButton.style("transform", "scale(1.2)");
   });
@@ -3431,6 +3462,7 @@ function setUpGUI() {
     exitButton.style("transform", "scale(1)");
   });
 
+  //Change game mode and hide all GUI once X is pressed
   exitButton.mousePressed(() => {
     gameMode = "menu";
     mainMenuContainer.show();
@@ -3441,6 +3473,7 @@ function setUpGUI() {
     selected = "none";
   });
 
+  //Loop through object presets and create button for each one
   for (let object of objectLibrary) {
     button = createButton("");
     button.parent(sideBar);
@@ -3461,6 +3494,8 @@ function setUpGUI() {
     });
   }
 }
+
+//Load a stage given a array where objects are not made yet
 function loadStage(stage){
   currentStage = stage;
   let newMap = createGrid(totalRows, totalCols);
@@ -3468,9 +3503,12 @@ function loadStage(stage){
   //Clear old stuff
   entities = [];
 
+  //Loop throug harray
   for (let x = 0; x < totalRows; x++){
     for (let y = 0; y < totalCols; y++){
       let item = stage[x][y];
+
+      //if the item type is a block or platform make a new platform
       if (item.type === "block" || item.type === "platform") {
         newMap[x][y] = new Platform(
           item.x, 
@@ -3489,6 +3527,7 @@ function loadStage(stage){
         );
       }
 
+      //If the item type is a player set the player variable to that player
       if (item.type === "player") {
         let savedPlayer = new Player(
           item.x,
@@ -3501,20 +3540,24 @@ function loadStage(stage){
         entities.push(savedPlayer);
       }
 
+      //If the item is a string it exists to store information and should remain as such
       if (typeof item === "string") {
         newMap[x][y] = item;
       }
 
+      //If the item type is a breakable object adjust table, and push it to other array for easier loops
       if (item.type === "breakableObject") {
         let object = new BreakableObject(item.x, item.y, item.sizeX, item.sizeY, item.img, item.health);
         newMap[x][y] = object;
         brObjects.push(object);
       }
 
+      //If the item type is a gate make a new gate
       if (item.type === "gate") {
         newMap[x][y] = new Gate(item.x, item.y, item.from, item.to, item.sizeX, item.sizeY, item.toX, item.toY);
       }
 
+      //If the item type is a mushroom make a new mushroom and push it to the entities tab for easier loops
       if (item.type === "mushroom") {
         let shroom = new Mushroom(item.x, item.y, item.startPos, item.endPos, item.directionFacing);
         newMap[x][y] = shroom;
@@ -3540,6 +3583,7 @@ function createMenuUI(){
   //Button to continue from wherever player last left off in campaign/main game
   let continueBtn = createButton("CONTINUE");
   continueBtn.parent(mainMenuContainer);
+  continueBtn.hide();
   styleMenuButton(continueBtn);
   
   //Continue player from wherever their last stage was when pressed (or from save point in the future)
@@ -3587,6 +3631,21 @@ function styleMenuButton(btn) {
   });
 }
 
+function stageSideButtons(btn){
+  btn.style("transition", "transform 0.2s ease-out, color 0.2s");
+
+  btn.mouseOver(() => {
+    btn.style("color", "#b07f2a");
+    btn.style("transform", "scale(1.2)");
+  });
+
+  //Reset 
+  btn.mouseOut(() => {
+    btn.style("color", "#ffffff");
+    btn.style("transform", "scale(1)");
+  });
+}
+
 function stageManagerUI(){
   stageManager = createDiv("").id("stageManager");
   stageManager.style("position", "absolute");
@@ -3614,11 +3673,34 @@ function stageManagerUI(){
 function buildStageItem(parent){
   parent.html(''); //Crucial to clear old list
 
+  //Close button
+  let exitButton = createButton("X").parent(parent);
+  exitButton.style("position", "absolute");
+  exitButton.style("top", "10px")
+  exitButton.style("right", "10px")
+  exitButton.style("font-size", "45px")
+  exitButton.style("border", "none");
+  exitButton.style("background", "none")
+  exitButton.style("color", "#000000");
+  exitButton.style("transition", "transform 0.1s ease-out")
+
+  exitButton.mousePressed(() => {
+    stageManager.hide();
+  });
+
+  exitButton.mouseOver(() => {
+    
+    exitButton.style("transform", "scale(1.5)");
+  });
+
+  exitButton.mouseOut(() => {
+    exitButton.style("transform", "scale(1)");
+  });
+
   //Title
   createElement("h3", "STAGES").parent(parent);
 
-  //Creat scrollable box to contain our stagest
-
+  //Creat scrollable box to contain our stages
   let scrollBox = createDiv("").parent(parent);
   scrollBox.style("max-height", "300px");
   scrollBox.style("overflow-y", "auto");
@@ -3633,9 +3715,18 @@ function buildStageItem(parent){
     entry.style("align-items", "center");
     entry.style("border", "5px solid black");
     entry.style("padding", "5px");
-    
+
+    entry.style("container-type", "inline-size");
+
     //label
-    createElement("span", stage).parent(entry);
+    let entryText = createElement("span", stage).parent(entry);
+
+    //Edits to make sure the text doesn't look weird if it is a super long name
+    entryText.style("font-size", "10cqi")
+    entryText.style("flex-shrink", "1");
+    entryText.style("overflow", "hidden");
+    entryText.style("white-space", "nowrap");
+    entryText.style("text-overflow", "ellipsis");
 
     //Where are buttons are held
     let buttonGroup = createDiv("").parent(entry);
@@ -3650,10 +3741,12 @@ function buildStageItem(parent){
       loadUserStage(stage, "playing");
     });
 
+    stageSideButtons(playButton);
+
     //Delete and save data
     let deleteButton = createButton("✘").parent(buttonGroup);
     deleteButton.style("color", "white");
-    deleteButton.style("background", "#004f1e");
+    deleteButton.style("background", "#c20707");
     deleteButton.mousePressed(() => {
       if (confirm(`Delete stage "${stage}"?`)){
         delete userStages[stage];
@@ -3662,13 +3755,17 @@ function buildStageItem(parent){
       }
     });
 
+    stageSideButtons(deleteButton);
+
     //Load map and edit
     let develop = createButton("✎").parent(buttonGroup);
     develop.style("color", "white");
-    develop.style("background", "#004f1e");
+    develop.style("background", "#250c68");
     develop.mousePressed(() => {
       loadUserStage(stage, "editor");
     });
+
+    stageSideButtons(develop);
   }
 
   //Bottom area(creat new stage)
@@ -3680,10 +3777,13 @@ function buildStageItem(parent){
   newArea.style("gap", "10px");
 
   //Label
-  createElement("span", "NEW").parent(newArea);
+  createElement("span", "CREATE NEW").parent(newArea);
 
   //When pressed make a new stage input and enter it into save history
-  let createBtn = createButton("CREATE").parent(newArea);
+  let createBtn = createButton("+").parent(newArea);
+  createBtn.style("font-size", "40px");
+  createBtn.style("background","none");
+  createBtn.style("border","none");
   createBtn.mousePressed(() => {
     let name = prompt("Enter stage name");
     if (name && !userStages[name]) {
@@ -3699,14 +3799,23 @@ function buildStageItem(parent){
     }
   });
 
-  //Close button
-  let exitButton = createButton("X").parent(parent);
-  exitButton.style("margin-top", "10px");
-  exitButton.mousePressed(() => {
-    stageManager.hide();
+  createBtn.style("transition", "transform 0.2s ease-out, color 0.2s");
+
+  //Make hover anims
+  createBtn.mouseOver(() => {
+    createBtn.style("color", "#e9d0a5");
+    createBtn.style("transform", "scale(1.8)");
+    createBtn.style("-webkit-text-stroke", "1px black");
+  });
+
+  //Reset 
+  createBtn.mouseOut(() => {
+    createBtn.style("color", "#000000");
+    createBtn.style("transform", "scale(1)");
   });
 }
 
+//Loads the users stage
 function loadUserStage(stageName, mode){  
   //If stage doesn't exist return
   if (!userStages[stageName]){
@@ -3728,5 +3837,4 @@ function loadUserStage(stageName, mode){
   else {
     mapGrid = loadStage(deadStage);
   }
-
 }
