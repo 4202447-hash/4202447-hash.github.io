@@ -15,6 +15,9 @@
 - [Ball Collision OOP](14-ball-oop)
 - [Connected Nodes OOP](15-nodes)
 - [Inheritence](16-inheritence)
+- [Collide2d][17-collide]
+- [Recursive Circles][18-recursion]
+- [Spinksitrinski][19-triangle]
 
 ## Assignments
 - [Interactive Scene](interactive-scene)
